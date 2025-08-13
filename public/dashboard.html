@@ -172,22 +172,63 @@
         });
 
         function initializeApp() {
-            setupEventListeners();
-            setupServerSentEvents(); // Only SSE for real-time updates
-            loadInitialData(); // Load initial data once
+            console.log('🚀 Initializing dashboard app...');
+            try {
+                setupEventListeners();
+                console.log('✅ Event listeners setup complete');
+                
+                loadInitialData(); // Load initial data first
+                console.log('✅ Initial data load started');
+                
+                // Setup SSE after initial load
+                setTimeout(() => {
+                    setupServerSentEvents();
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Error initializing app:', error);
+            }
         }
 
         function setupEventListeners() {
-            document.querySelectorAll('.tab-button').forEach(t => 
-                t.addEventListener('click', () => switchTab(t.dataset.tab))
-            );
-            document.getElementById('search-input').addEventListener('input', 
-                debounce(fetchRequests, 500)
-            );
-            document.getElementById('status-filter').addEventListener('change', () => {
-                requestsPage = 1;
-                fetchRequests();
-            });
+            console.log('🎛️ Setting up event listeners...');
+            
+            try {
+                // Tab buttons
+                const tabButtons = document.querySelectorAll('.tab-button');
+                console.log('Found tab buttons:', tabButtons.length);
+                tabButtons.forEach(t => {
+                    t.addEventListener('click', () => {
+                        console.log('Tab clicked:', t.dataset.tab);
+                        switchTab(t.dataset.tab);
+                    });
+                });
+
+                // Search input
+                const searchInput = document.getElementById('search-input');
+                if (searchInput) {
+                    searchInput.addEventListener('input', debounce(fetchRequests, 500));
+                    console.log('✅ Search input listener added');
+                } else {
+                    console.warn('⚠️ Search input not found');
+                }
+
+                // Status filter
+                const statusFilter = document.getElementById('status-filter');
+                if (statusFilter) {
+                    statusFilter.addEventListener('change', () => {
+                        requestsPage = 1;
+                        fetchRequests();
+                    });
+                    console.log('✅ Status filter listener added');
+                } else {
+                    console.warn('⚠️ Status filter not found');
+                }
+                
+                console.log('✅ All event listeners setup successfully');
+            } catch (error) {
+                console.error('❌ Error setting up event listeners:', error);
+            }
         }
 
         function setupAutoRefresh() {
