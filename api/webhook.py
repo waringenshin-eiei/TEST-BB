@@ -99,6 +99,11 @@ def create_flex_report(report_data):
         'unknown': {'main': '#4B5563', 'light': '#F3F4F6'}
     }
     theme = color_themes.get(blood_type, color_themes['unknown'])
+    
+    # FIX: Combine today's date with the selected delivery time
+    delivery_time = report_data.get('deliveryTime', '-')
+    todays_date = datetime.now(THAILAND_TZ).strftime('%d %b %Y')
+    full_delivery_schedule = f"{todays_date}, {delivery_time}" if delivery_time != '-' else '-'
 
     def create_bilingual_row(label_th, label_en, value, is_bold=False):
         return {
@@ -127,7 +132,6 @@ def create_flex_report(report_data):
                 ]},
                 {"type": "separator", "margin": "lg"},
                 create_bilingual_row("Request ID", "Request ID", report_data.get('request_id'), is_bold=True),
-                # FIX: Set is_bold=True for the patient info row
                 create_bilingual_row("ผู้ป่วย", "Patient", f"{report_data.get('patientName')} (HN: {report_data.get('hn')})", is_bold=True),
                 create_bilingual_row("หอผู้ป่วย", "Ward", report_data.get('wardName')),
                 {"type": "separator", "margin": "lg"},
@@ -135,11 +139,10 @@ def create_flex_report(report_data):
                 create_bilingual_row("ชนิดย่อย", "Subtype", report_data.get('subtype', '-')),
                 create_bilingual_row("จำนวน", "Quantity", f"{report_data.get('quantity')} Units"),
                 {"type": "separator", "margin": "lg"},
-                create_bilingual_row("รอบส่ง", "Schedule", report_data.get('deliveryTime')),
+                create_bilingual_row("รอบส่ง", "Schedule", full_delivery_schedule), # Use the new combined date and time
                 create_bilingual_row("สถานที่", "Location", report_data.get('deliveryLocation')),
                 create_bilingual_row("ผู้แจ้ง", "Reporter", report_data.get('reporterName')),
                 {"type": "separator", "margin": "lg"},
-                # FIX: Use a format that clearly shows both Date and Time
                 {"type": "text", "text": f"บันทึกเมื่อ (Date): {datetime.now(THAILAND_TZ).strftime('%d %b %Y, %H:%M')}", "wrap": True, "size": "xxs", "color": "#AAAAAA", "align": "center"}
             ]}
         }
