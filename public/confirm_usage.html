@@ -58,7 +58,8 @@
         .autocomplete-container { position: relative; }
         .autocomplete-items { position: absolute; top: 100%; left: 0; right: 0; z-index: 99; max-height: 240px; overflow-y: auto; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); border: 2px solid #e5e7eb; border-top: none; border-radius: 0 0 1rem 1rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1); }
         .autocomplete-items div { padding: 1rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: all 0.2s ease; font-weight: 500; }
-        .autocomplete-items div:hover, .autocomplete-active { background-color: #f3f4f6; }
+        .autocomplete-items div:hover { background-color: #f3f4f6; }
+        .autocomplete-active { background-color: #f3f4f6 !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         .summary-docket { background-color: #f8fafc; border: 2px dashed #d1d5db; border-radius: 1.25rem; padding: 1.5rem; margin-top: 2rem; }
@@ -134,7 +135,6 @@
                     <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage2" disabled>ถัดไป →</button>
                 </div>
             </div>
-
             <div class="form-page" id="page3">
                  <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">รายละเอียดผลิตภัณฑ์</h2>
@@ -146,7 +146,6 @@
                     <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage3" disabled>ถัดไป →</button>
                 </div>
             </div>
-
             <div class="form-page" id="page4">
                  <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800">การจัดส่งและสรุปข้อมูล</h2>
@@ -177,25 +176,16 @@
     </div>
 
     <script>
-        // --- State Management ---
         let currentPage = 1;
         let selectedBloodType = '';
-        // FIX: Use a dedicated state variable for subtype for reliability
         let selectedSubtype = ''; 
         let selectedDeliveryTime = { id: null, time: null };
         let lineUserId = '';
         let allWards = [];
         let deliverySchedules = [];
         let formData = {};
+        const stepDescriptions = { 1: 'ขั้นตอนที่ 1: เลือกผลิตภัณฑ์', 2: 'ขั้นตอนที่ 2: กรอกข้อมูล', 3: 'ขั้นตอนที่ 3: ระบุรายละเอียด', 4: 'ขั้นตอนที่ 4: ยืนยันข้อมูล' };
 
-        const stepDescriptions = {
-            1: 'ขั้นตอนที่ 1: เลือกผลิตภัณฑ์',
-            2: 'ขั้นตอนที่ 2: กรอกข้อมูล',
-            3: 'ขั้นตอนที่ 3: ระบุรายละเอียด',
-            4: 'ขั้นตอนที่ 4: ยืนยันข้อมูล'
-        };
-
-        // --- Initialization ---
         document.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             lineUserId = urlParams.get('line_user_id');
@@ -210,26 +200,21 @@
 
         async function fetchInitialData() {
             try {
-                // Mock data for lists. Dynamic user detection is removed for speed.
                 const mockData = {
                     wards: ["2ก", "2ข", "IMC 2ค", "NICU", "2ง", "IMC 2ง", "2ฉ", "3ก", "3ข", "3ค", "3ง", "3จ", "IMC 3จ", "3ฉ", "4ก", "4ข1", "4ข2", "4ข3", "4ค", "4ง", "5ก", "5ข", "5ค", "5ง", "5จ", "6ก", "6ข", "6จ", "OPD AE", "AE1", "AE2", "AE3", "AE4", "SICU1", "SICU2", "SICU3", "NSICU", "Burn Unit", "CCU", "PICU", "MICU 1", "MICU 2", "MICU 3", "CVT-ICU", "SCTU 1", "หอสงฆ์อาพาธ", "8B", "8C", "9A", "9B", "9C", "สว 11", "สว 12", "สว 13", "สว 14", "สว 15", "กว. 6/1", "กว. 6/2", "กว. 7/1", "ห้องคลอด", "ห้องให้เลือดผู้ป่วยนอก", "ไตเทียม", "ห้อง x-ray", "Endoscope สว.ชั้น4"],
                     schedules: [ { id: 1, time: "10.00น." }, { id: 2, time: "11.00น." }, { id: 3, time: "12.00น." }, { id: 4, time: "13.00น." }, { id: 5, time: "14.00น." }, { id: 6, time: "15.00น." }, { id: 7, time: "16.00น." }, { id: 8, time: "18.00น." }, { id: 9, time: "20.00น." }, { id: 10, time: "21.00น." }, { id: 11, time: "23.00น." } ]
                 };
-
                 allWards = mockData.wards;
                 deliverySchedules = mockData.schedules;
-                
                 setupAutocomplete(document.getElementById("wardName"), allWards);
                 setupAutocomplete(document.getElementById("deliveryLocation"), allWards);
                 createDeliveryTimeCards();
-
             } catch (error) {
                 console.error('Error fetching initial data:', error);
                 showErrorModal('ไม่สามารถโหลดข้อมูลได้', 'กรุณาลองใหม่อีกครั้ง');
             }
         }
         
-        // --- UI & Page Navigation ---
         const nextPage = () => { if (currentPage < 4) { currentPage++; updatePageUI(); } };
         const previousPage = () => { if (currentPage > 1) { currentPage--; updatePageUI(); } };
 
@@ -243,7 +228,6 @@
             if (currentPage === 4) updateSummary();
         }
 
-        // --- Event Listeners Setup ---
         function setupEventListeners() {
             document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', handleProductSelection));
             ['nextPage1', 'nextPage2', 'nextPage3'].forEach(id => document.getElementById(id).addEventListener('click', nextPage));
@@ -260,30 +244,27 @@
         function handleProductSelection(event) {
             const card = event.currentTarget;
             selectedBloodType = card.dataset.type;
-            const mainContainer = document.getElementById('mainContainer');
-            mainContainer.className = mainContainer.className.replace(/theme-\w+/g, ''); // Clear existing themes
-            if (selectedBloodType === 'redcell') mainContainer.classList.add('theme-red-cells');
-            if (selectedBloodType === 'ffp') mainContainer.classList.add('theme-plasma');
-            if (selectedBloodType === 'cryoprecipitate') mainContainer.classList.add('theme-cryo');
-
+            const main = document.getElementById('mainContainer');
+            main.className = main.className.replace(/theme-\w+/g, '');
+            if (selectedBloodType === 'redcell') main.classList.add('theme-red-cells');
+            if (selectedBloodType === 'ffp') main.classList.add('theme-plasma');
+            if (selectedBloodType === 'cryoprecipitate') main.classList.add('theme-cryo');
             document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
             document.getElementById('nextPage1').disabled = false;
         }
 
-        // --- Dynamic Content Generation ---
         function createDeliveryTimeCards() {
             const container = document.getElementById('deliveryTimeCards');
             container.innerHTML = deliverySchedules.map(({id, time}) => `
                 <div class="selection-card text-center p-3 cursor-pointer time-card" data-time-id="${id}" data-time-value="${time}">
                     <div class="text-xl">🕐</div><div class="text-base font-semibold mt-1">${time}</div>
                 </div>`).join('');
-
             container.querySelectorAll('.time-card').forEach(card => card.addEventListener('click', () => {
                 container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
-                if (currentPage === 4) updateSummary(); // FIX: Instantly update summary
+                if (currentPage === 4) updateSummary();
                 validatePage(4);
             }));
         }
@@ -302,28 +283,23 @@
             });
             content += `</div></div>`;
             container.innerHTML = content;
-
             container.querySelectorAll('input, select').forEach(input => input.addEventListener('input', () => validatePage(3)));
             container.querySelectorAll('.subtype-card').forEach(card => card.addEventListener('click', () => {
                 container.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
-                selectedSubtype = card.dataset.subtype; // FIX: Set state variable directly
+                selectedSubtype = card.dataset.subtype;
                 validatePage(3);
             }));
-            selectedSubtype = ''; // Reset on page load
+            selectedSubtype = '';
             validatePage(3);
         }
 
         function updateSummary() {
             formData = {
-                hn: document.getElementById('hn').value,
-                patientName: document.getElementById('patientName').value,
-                wardName: document.getElementById('wardName').value,
-                bloodType: selectedBloodType,
-                quantity: document.getElementById('quantity')?.value,
-                subtype: selectedSubtype, // FIX: Read from state variable
-                deliveryTime: selectedDeliveryTime.time,
-                deliveryLocation: document.getElementById('deliveryLocation').value,
+                hn: document.getElementById('hn').value, patientName: document.getElementById('patientName').value,
+                wardName: document.getElementById('wardName').value, bloodType: selectedBloodType,
+                quantity: document.getElementById('quantity')?.value, subtype: selectedSubtype,
+                deliveryTime: selectedDeliveryTime.time, deliveryLocation: document.getElementById('deliveryLocation').value,
                 reporterName: document.getElementById('reporterName').value
             };
             document.getElementById('summaryCard').innerHTML = `
@@ -340,14 +316,13 @@
                 </div>`;
         }
 
-        // --- Validation ---
         function validatePage(page) {
             let isValid = false;
             if (page === 2) {
                 isValid = document.getElementById('hn').value && document.getElementById('patientName').value && document.getElementById('wardName').value && document.getElementById('reporterName').value;
                 document.getElementById('nextPage2').disabled = !isValid;
             } else if (page === 3) {
-                isValid = document.getElementById('quantity')?.value > 0 && selectedSubtype; // FIX: Validate state variable
+                isValid = document.getElementById('quantity')?.value > 0 && selectedSubtype;
                 document.getElementById('nextPage3').disabled = !isValid;
             } else if (page === 4) {
                 isValid = selectedDeliveryTime.id && document.getElementById('deliveryLocation').value;
@@ -355,7 +330,6 @@
             }
         }
         
-        // --- Form Submission & Utils ---
         async function submitForm() {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
@@ -375,6 +349,7 @@
                 submitBtn.innerHTML = `ยืนยันและส่งข้อมูล`;
             }
         }
+
         function showSuccessModal(title, message) {
             document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
@@ -390,8 +365,52 @@
 
         // --- Autocomplete Logic ---
         function setupAutocomplete(input, suggestions) {
-            // This function from the previous version is correct and remains unchanged.
-            // ...
+            if (!input || !suggestions) return;
+            let currentFocus = -1;
+            input.addEventListener("input", function() {
+                closeAllLists();
+                const val = this.value;
+                if (!val) return false;
+                currentFocus = -1;
+                const listContainer = document.createElement("div");
+                listContainer.setAttribute("class", "autocomplete-items");
+                this.parentNode.appendChild(listContainer);
+                const filtered = suggestions.filter(item => item.toLowerCase().includes(val.toLowerCase())).sort((a,b) => (a.toLowerCase().startsWith(val.toLowerCase()) === b.toLowerCase().startsWith(val.toLowerCase())) ? a.localeCompare(b) : (a.toLowerCase().startsWith(val.toLowerCase()) ? -1 : 1));
+                filtered.slice(0, 10).forEach(item => {
+                    const itemDiv = document.createElement("div");
+                    itemDiv.innerHTML = item.replace(new RegExp(`(${val})`, 'gi'), '<strong class="text-medical-red-600 bg-medical-red-100 px-1 rounded">$1</strong>');
+                    itemDiv.addEventListener("click", function() {
+                        input.value = item;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                        closeAllLists();
+                    });
+                    listContainer.appendChild(itemDiv);
+                });
+            });
+            input.addEventListener("keydown", function(e) {
+                let items = this.parentNode.querySelector(".autocomplete-items");
+                if (items) items = items.getElementsByTagName("div");
+                if (e.keyCode === 40) { currentFocus++; addActive(items); } 
+                else if (e.keyCode === 38) { currentFocus--; addActive(items); } 
+                else if (e.keyCode === 13) { e.preventDefault(); if (currentFocus > -1 && items) items[currentFocus].click(); }
+            });
+            function addActive(items) {
+                if (!items) return false;
+                removeActive(items);
+                if (currentFocus >= items.length) currentFocus = 0;
+                if (currentFocus < 0) currentFocus = items.length - 1;
+                items[currentFocus].classList.add("autocomplete-active");
+            }
+            function removeActive(items) {
+                for (let i = 0; i < items.length; i++) items[i].classList.remove("autocomplete-active");
+            }
+            function closeAllLists(elmnt) {
+                const items = document.getElementsByClassName("autocomplete-items");
+                for (let i = 0; i < items.length; i++) {
+                    if (elmnt != items[i] && elmnt != input) items[i].parentNode.removeChild(items[i]);
+                }
+            }
+            document.addEventListener("click", e => closeAllLists(e.target));
         }
     </script>
 </body>
