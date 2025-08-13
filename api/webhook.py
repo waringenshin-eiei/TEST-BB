@@ -2,7 +2,7 @@
 #
 # This single file provides a complete backend solution managing:
 # 1. POST /api/webhook:         Instantaneous replies to the LINE Messaging API.
-# 2. POST /api/submit_request:   Handles form submissions, database operations, and sends rich reports.
+# 2. POST /api/submit_request:   Handles form submissions, creates new users on-the-fly, and sends rich reports.
 # 3. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
 #
 # --- Required Libraries ---
@@ -35,7 +35,6 @@ sse_queue = queue.Queue()
 
 # --- Core Logic: Database & Cache ---
 def get_db_connection():
-    """Establishes a connection to the PostgreSQL database."""
     if not POSTGRES_URL: return None
     try:
         return psycopg.connect(POSTGRES_URL)
@@ -63,13 +62,12 @@ def get_user_profile(line_user_id):
             result = cur.fetchone()
 
     if not result:
-        print(f"❌ User with line_user_id {line_user_id} not found in DB.")
-        return None
+        return None # Return None if user not found, will be handled by the caller
 
     profile_data = {"user_uuid": str(result[0])}
     if redis_client:
         try:
-            redis_client.set(cache_key, json.dumps(profile_data), ex=86400) # Cache for 24 hours
+            redis_client.set(cache_key, json.dumps(profile_data), ex=86400)
             print(f"CACHE SET for user {line_user_id}")
         except Exception as e:
             print(f"⚠️ Redis SET error: {e}")
@@ -77,7 +75,6 @@ def get_user_profile(line_user_id):
 
 # --- Core Logic: LINE Messaging & Flex Report ---
 def send_line_message(user_id, messages):
-    """Generic function to push a message to a user via the LINE API."""
     if not LINE_TOKEN: return
     try:
         requests.post(
@@ -91,7 +88,6 @@ def send_line_message(user_id, messages):
         print(f"❌ LINE API Error: {e}")
 
 def create_flex_report(report_data):
-    """Creates a beautiful, color-coded LINE Flex Message JSON object."""
     blood_type = report_data.get('bloodType', 'unknown').lower()
     color_themes = {
         'redcell': {'main': '#B91C1C', 'light': '#FEF2F2'},
@@ -107,9 +103,7 @@ def create_flex_report(report_data):
                 {"type": "text", "text": str(value) if value else "-", "size": "sm", "color": "#111111", "align": "end", "weight": "bold" if is_bold else "regular", "flex": 2, "wrap": True}
             ]}
 
-    return {
-        "type": "flex", "altText": f"ยืนยันคำขอใช้เลือด: {report_data.get('request_id')}",
-        "contents": { "type": "bubble",
+    return { "type": "flex", "altText": f"ยืนยันคำขอใช้เลือด: {report_data.get('request_id')}", "contents": { "type": "bubble",
             "header": {"type": "box", "layout": "vertical", "paddingAll": "20px", "backgroundColor": theme['main'], "contents": [
                 {"type": "text", "text": "✅ ยืนยันข้อมูลสำเร็จ", "color": "#FFFFFF", "size": "lg", "weight": "bold"},
                 {"type": "text", "text": "Request Confirmed", "color": "#FFFFFFDD", "size": "xs"}
@@ -131,11 +125,9 @@ def create_flex_report(report_data):
                 {"type": "separator", "margin": "lg"},
                 {"type": "text", "text": f"บันทึกเมื่อ: {datetime.now(THAILAND_TZ).strftime('%d %b %Y, %H:%M')}", "wrap": True, "size": "xxs", "color": "#AAAAAA", "align": "center"}
             ]}
-        }
-    }
+        }}
 
 def send_form_link(user_id):
-    """Sends the initial message with a button to open the form."""
     form_url = f"{FORM_BASE_URL}/confirm_usage.html?line_user_id={urllib.parse.quote(user_id)}"
     message = {"type": "template", "altText": "แจ้งเตือนการใช้เลือด", "template": {
             "type": "buttons", "thumbnailImageUrl": "https://storage.googleapis.com/line-flex-images-logriz/blood-request-banner.png",
@@ -145,12 +137,11 @@ def send_form_link(user_id):
         }}
     send_line_message(user_id, message)
 
-# --- Core Logic: Server-Sent Events (SSE) ---
+# --- SSE Logic ---
 def notify_dashboard_update(event_type, data):
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
         sse_queue.put_nowait(json.dumps(event_data))
-        print(f"📡 SSE event queued: {event_type}")
     except queue.Full:
         print("⚠️ SSE queue is full, dropping event")
 
@@ -174,50 +165,50 @@ if not sse_thread.is_alive():
 # --- Main HTTP Handler ---
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        """Routes POST requests to the correct handler based on the path."""
-        if self.path == '/api/webhook':
-            self.handle_line_webhook()
-        elif self.path == '/api/submit_request':
-            self.handle_form_submission()
-        else:
-            self._send_response(404, {"error": "Endpoint not found"})
+        if self.path == '/api/webhook': self.handle_line_webhook()
+        elif self.path == '/api/submit_request': self.handle_form_submission()
+        else: self._send_response(404, {"error": "Endpoint not found"})
 
     def do_GET(self):
-        """Routes GET requests to the correct handler."""
-        if self.path == '/api/sse-updates':
-            self.handle_sse_connection()
-        elif self.path == '/api/webhook':
-            self._send_response(200, {"status": "ok", "sse_clients": len(sse_clients)})
-        else:
-            self._send_response(404, {"error": "Endpoint not found"})
+        if self.path == '/api/sse-updates': self.handle_sse_connection()
+        elif self.path == '/api/webhook': self._send_response(200, {"status": "ok"})
+        else: self._send_response(404, {"error": "Endpoint not found"})
 
     def handle_line_webhook(self):
-        """Handles fast, non-blocking LINE webhook events."""
         try:
             body = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
             for event in body.get('events', []):
                 user_id = event.get('source', {}).get('userId')
                 if user_id and event.get('type') in ['message', 'follow']:
                     send_form_link(user_id)
-        except Exception as e:
-            print(f"❌ Webhook error: {e}")
-        finally:
-            self._send_response(200, {})
+        except Exception as e: print(f"❌ Webhook error: {e}")
+        finally: self._send_response(200, {})
 
     def handle_form_submission(self):
-        """Handles form submission, DB writing, and sending the Flex report."""
         try:
             form_data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
             line_user_id = form_data.get('line_user_id')
             if not line_user_id: raise ValueError("line_user_id is required")
 
             user_profile = get_user_profile(line_user_id)
-            if not user_profile: raise ValueError(f"User profile not found for {line_user_id}")
             
             with get_db_connection() as conn:
                 if not conn: raise ConnectionError("Database connection failed")
                 with conn.cursor() as cur:
-                    # FIX: Look up the integer ward_id from the string wardName sent by the form.
+                    # --- FIX: JUST-IN-TIME USER CREATION ---
+                    if not user_profile:
+                        print(f"INFO: User {line_user_id} not found. Creating new user record.")
+                        cur.execute(
+                            "INSERT INTO users (line_user_id) VALUES (%s) RETURNING user_id",
+                            (line_user_id,)
+                        )
+                        new_user_uuid = str(cur.fetchone()[0])
+                        user_profile = {'user_uuid': new_user_uuid}
+                        # Cache the newly created user profile
+                        if redis_client:
+                             redis_client.set(f"user_profile:{line_user_id}", json.dumps(user_profile), ex=86400)
+                    # --- END FIX ---
+
                     selected_ward_name = form_data.get('wardName')
                     if not selected_ward_name: raise ValueError("Ward Name from form is required")
                     
@@ -226,7 +217,6 @@ class handler(BaseHTTPRequestHandler):
                     if not ward_result: raise ValueError(f"Ward '{selected_ward_name}' not found in directory.")
                     ward_id_for_request = ward_result[0]
                     
-                    # Insert the main request and get the new UUID
                     cur.execute("""
                         INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, request_data)
                         VALUES (%s, %s, %s, 'pending', %s) RETURNING request_id, created_at;
@@ -234,7 +224,6 @@ class handler(BaseHTTPRequestHandler):
                     result = cur.fetchone()
                     new_request_id, created_at = str(result[0]), result[1]
                     
-                    # Insert component details
                     cur.execute("""
                         INSERT INTO blood_components (request_id, component_type, quantity, component_subtype)
                         VALUES (%s, %s, %s, %s)
@@ -259,23 +248,18 @@ class handler(BaseHTTPRequestHandler):
             self._send_response(500, {"status": "error", "message": "An internal error occurred."})
 
     def handle_sse_connection(self):
-        """Handles a single, persistent Server-Sent Events connection."""
         self.send_response(200)
         self.send_header('Content-Type', 'text/event-stream')
         self.send_header('Cache-Control', 'no-cache')
         self.send_header('Connection', 'keep-alive')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-
         client_queue = queue.Queue()
         sse_clients.append(client_queue)
         print(f"➕ SSE client connected. Total clients: {len(sse_clients)}")
-
         try:
-            initial_message = json.dumps({'type': 'connected', 'message': 'Connection established'})
-            self.wfile.write(f"data: {initial_message}\n\n".encode('utf-8'))
+            self.wfile.write(f"data: {json.dumps({'type': 'connected'})}\n\n".encode('utf-8'))
             self.wfile.flush()
-
             while True:
                 try:
                     message = client_queue.get(timeout=25)
@@ -285,14 +269,10 @@ class handler(BaseHTTPRequestHandler):
                     heartbeat = json.dumps({'type': 'heartbeat', 'timestamp': datetime.now(THAILAND_TZ).isoformat()})
                     self.wfile.write(f"data: {heartbeat}\n\n".encode('utf-8'))
                     self.wfile.flush()
-        
         except (IOError, BrokenPipeError, ConnectionResetError) as e:
             print(f"🔌 SSE client disconnected gracefully: {e}")
-        except Exception as e:
-            print(f"❌ Unhandled SSE error: {e}")
         finally:
-            if client_queue in sse_clients:
-                sse_clients.remove(client_queue)
+            if client_queue in sse_clients: sse_clients.remove(client_queue)
             print(f"➖ SSE client removed. Total clients: {len(sse_clients)}")
 
     def do_OPTIONS(self):
