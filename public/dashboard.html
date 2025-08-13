@@ -36,9 +36,17 @@
         .updating { animation: updateGlow 1s ease-in-out; }
         @keyframes updateGlow { 0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); } 50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); } }
         
+        
         /* New row highlight */
         .new-row { animation: highlightNew 3s ease-in-out; }
         @keyframes highlightNew { 0% { background-color: #dcfce7; } 100% { background-color: transparent; } }
+        
+        /* Shake animation for wrong password */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -62,12 +70,37 @@
         </div>
     </div>
 
-    <div id="password-protection" class="fixed inset-0 bg-gray-200 z-50 flex items-center justify-center p-4">
-        <div class="bg-white p-8 rounded-lg shadow-lg text-center w-full max-w-sm">
-            <h2 class="text-2xl font-bold mb-4">Please Enter Password</h2>
-            <input type="password" id="password-input" class="p-2 border rounded w-full mb-4">
-            <button id="password-submit" class="bg-red-600 text-white px-6 py-2 rounded-lg w-full hover:bg-red-700 transition">Enter</button>
-            <p id="password-error" class="text-red-500 mt-2 h-4"></p>
+    <div id="password-protection" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-2xl text-center w-full max-w-sm">
+            <div class="mb-6">
+                <div class="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Blood Bank Dashboard</h2>
+                <p class="text-gray-600">กรุณาใส่รหัสผ่านเพื่อเข้าสู่ระบบ</p>
+            </div>
+            <form id="password-form" class="space-y-4">
+                <input 
+                    type="password" 
+                    id="password-input" 
+                    placeholder="รหัสผ่าน" 
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    autocomplete="off"
+                >
+                <button 
+                    type="submit" 
+                    id="password-submit" 
+                    class="w-full bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition duration-200 font-medium"
+                >
+                    เข้าสู่ระบบ
+                </button>
+            </form>
+            <p id="password-error" class="text-red-500 mt-3 min-h-[1.5rem] text-sm"></p>
+            <div class="mt-4 text-xs text-gray-400">
+                <p>ติดต่อ IT หากลืมรหัสผ่าน</p>
+            </div>
         </div>
     </div>
 
@@ -183,35 +216,69 @@
         function setupPasswordProtection() {
             const protectionDiv = document.getElementById('password-protection');
             const passwordInput = document.getElementById('password-input');
+            const passwordForm = document.getElementById('password-form');
             const submitButton = document.getElementById('password-submit');
             const errorP = document.getElementById('password-error');
             
-            passwordInput.focus();
+            // Focus on password input
+            setTimeout(() => {
+                passwordInput.focus();
+            }, 100);
+            
             const CORRECT_PASSWORD = "FLUKEE1112";
 
-            const checkPassword = () => {
+            const checkPassword = (e) => {
+                if (e) {
+                    e.preventDefault(); // Prevent form submission
+                }
+                
                 const enteredPassword = passwordInput.value.trim();
-                console.log('Entered password:', enteredPassword); // Debug log
-                console.log('Expected password:', CORRECT_PASSWORD); // Debug log
-                console.log('Match:', enteredPassword === CORRECT_PASSWORD); // Debug log
+                console.log('🔐 Password check triggered');
+                console.log('Entered:', enteredPassword);
+                console.log('Expected:', CORRECT_PASSWORD);
                 
                 if (enteredPassword === CORRECT_PASSWORD) {
-                    protectionDiv.style.display = 'none';
-                    initializeApp();
+                    console.log('✅ Password correct - logging in');
+                    errorP.innerText = 'เข้าสู่ระบบสำเร็จ...';
+                    errorP.className = 'text-green-500 mt-3 min-h-[1.5rem] text-sm';
+                    
+                    // Hide protection with animation
+                    protectionDiv.style.opacity = '0';
+                    protectionDiv.style.transition = 'opacity 0.3s ease-out';
+                    
+                    setTimeout(() => {
+                        protectionDiv.style.display = 'none';
+                        initializeApp();
+                    }, 300);
                 } else {
-                    errorP.innerText = `Incorrect Password! (Entered: "${enteredPassword}")`;
-                    passwordInput.value = '';
-                    passwordInput.focus();
+                    console.log('❌ Password incorrect');
+                    errorP.innerText = enteredPassword ? 
+                        `รหัสผ่านไม่ถูกต้อง! (คุณใส่: "${enteredPassword}")` : 
+                        'กรุณาใส่รหัสผ่าน';
+                    errorP.className = 'text-red-500 mt-3 min-h-[1.5rem] text-sm';
+                    
+                    // Add shake animation
+                    passwordInput.style.animation = 'shake 0.5s ease-in-out';
+                    setTimeout(() => {
+                        passwordInput.style.animation = '';
+                        passwordInput.value = '';
+                        passwordInput.focus();
+                    }, 500);
                 }
             };
             
+            // Handle form submission (Enter key)
+            passwordForm.addEventListener('submit', checkPassword);
+            
+            // Handle button click
             submitButton.addEventListener('click', checkPassword);
-            passwordInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') checkPassword();
+            
+            // Clear error on input
+            passwordInput.addEventListener('input', () => {
+                errorP.innerText = '';
             });
             
-            // For debugging - remove this in production
-            console.log('Password protection setup complete. Expected password:', CORRECT_PASSWORD);
+            console.log('🔐 Password protection initialized. Password:', CORRECT_PASSWORD);
         }
         
         function initializeApp() {
