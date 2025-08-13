@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/submit_request",
+      "destination": "/api/webhook"
+    },
+    {
+      "source": "/api/sse-updates",
+      "destination": "/api/webhook"
+    }
+  ]
+}
