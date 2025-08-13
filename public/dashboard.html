@@ -34,14 +34,28 @@
         .updating { animation: updateGlow 1s ease-in-out; }
         @keyframes updateGlow { 0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); } 50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); } }
         
-        /* --- CHANGED: Highlight animation updated to last 60 seconds with new colors --- */
-        .new-row { 
-            animation: highlightNewRow 360s linear; 
+        /* --- MODIFIED: Highlight animation now lasts 10 minutes. Green for 60s, then yellow. --- */
+        .new-row {
+            /* Animation lasts for 600 seconds (10 minutes) */
+            animation: highlightNewRow 600s linear;
         }
         @keyframes highlightNewRow {
-            0%   { background-color: #a7f3d0; } /* Start with a vibrant green */
-            50%  { background-color: #fef08a; } /* Fade to yellow over ~10 seconds */
-            100% { background-color: transparent; } /* Fade to transparent over the remaining time */
+            /* --- Phase 1: Solid Green (First 60 seconds) --- */
+            /* A new request appears with a green background. */
+            0%   { background-color: #a7f3d0; } /* Start green */
+            10%  { background-color: #a7f3d0; } /* 10% of 600s = 60s. Stays green. */
+
+            /* --- Phase 2: Fade to Yellow (Next 15 seconds) --- */
+            /* The green smoothly transitions to yellow. */
+            12.5% { background-color: #fef08a; } /* 2.5% of 600s = 15s. Fade is complete. */
+
+            /* --- Phase 3: Solid Yellow (Long hold) --- */
+            /* The request stays yellow for a long time to remain visible. */
+            50%  { background-color: #fef08a; }
+
+            /* --- Phase 4: Fade to Transparent (Final phase) --- */
+            /* The yellow highlight fades away, and the row returns to normal. */
+            100% { background-color: transparent; }
         }
     </style>
 </head>
@@ -431,14 +445,16 @@
                 return;
             }
 
-            tableBody.innerHTML = data.requests.map(req => {
+            const newRowsHtml = data.requests.map(req => {
                 const component = req.request_data?.bloodType
                     ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)`
                     : req.blood_type || '';
+                
+                // Determine if the row is new for highlighting purposes
                 const isNew = existingRequestIds ? !existingRequestIds.has(req.request_id) : false;
                 
                 return `
-                <tr class="border-b ${isNew ? 'new-row' : ''}">
+                <tr class="border-b ${isNew ? 'new-row' : ''}" data-request-id="${req.request_id}">
                     <td class="p-3 font-mono text-xs">${req.request_id}</td>
                     <td class="p-3">${formatDateTime(req.created_at)}</td>
                     <td class="p-3">${req.hospital_number || '-'}</td>
@@ -452,7 +468,16 @@
                     </td>
                 </tr>`;
             }).join('');
+            
+            if (existingRequestIds) {
+                // If it's a background refresh, prepend new rows and update existing ones
+                tableBody.insertAdjacentHTML('afterbegin', newRowsHtml);
+            } else {
+                // For a full page load or filter change, just replace the content
+                tableBody.innerHTML = newRowsHtml;
+            }
         }
+
 
         function renderPagination(data) {
             const controls = document.getElementById('pagination-controls');
