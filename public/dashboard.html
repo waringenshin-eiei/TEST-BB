@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blood Bank Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
+        .tab-button { padding: 0.5rem 1rem; border-bottom: 3px solid transparent; transition: all 0.2s; font-weight: 600; }
+        .tab-button.active { border-color: #dc2626; color: #dc2626; background-color: #fef2f2; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .stat-card { background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); }
+        .table th { background-color: #f1f5f9; }
+        .table tr:hover { background-color: #fef2f2; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="password-protection" class="fixed inset-0 bg-gray-200 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-lg shadow-lg text-center w-full max-w-sm">
+            <h2 class="text-2xl font-bold mb-4">Please Enter Password</h2>
+            <input type="password" id="password-input" class="p-2 border rounded w-full mb-4">
+            <button id="password-submit" class="bg-red-600 text-white px-6 py-2 rounded-lg w-full hover:bg-red-700 transition">Enter</button>
+            <p id="password-error" class="text-red-500 mt-2 h-4"></p>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Blood Bank Dashboard</h1>
+            <p class="text-gray-500">ภาพรวมและรายการแจ้งใช้เลือดทั้งหมด</p>
+        </header>
+
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="flex space-x-4" aria-label="Tabs"><button type="button" class="tab-button active" data-tab="dashboard">ภาพรวม (Dashboard)</button><button type="button" class="tab-button" data-tab="requests">รายการทั้งหมด (All Requests)</button></nav>
+        </div>
+
+        <main>
+            <div id="dashboard-content" class="tab-content active">
+                <div id="dashboard-loader" class="text-center p-8"><div class="loader"></div></div>
+                <div id="dashboard-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="stat-card p-6 text-center"><p class="text-gray-500">คำขอวันนี้</p><h2 id="stat-today" class="text-4xl font-bold text-red-600"></h2></div>
+                    <div class="stat-card p-6 text-center"><p class="text-gray-500">รอการยืนยัน</p><h2 id="stat-submitted" class="text-4xl font-bold text-amber-600"></h2></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-2"><canvas id="bloodTypeChart"></canvas></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4"><canvas id="wardChart"></canvas></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4">
+                        <h3 class="font-semibold text-lg mb-4">5 คำขอล่าสุด (ที่ยืนยันแล้ว)</h3>
+                        <div class="overflow-x-auto"><table class="w-full text-left table-auto"><tbody id="recent-requests-list"></tbody></table></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="requests-content" class="tab-content">
+                <div class="stat-card p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <input id="search-input" type="text" placeholder="ค้นหา HN หรือชื่อผู้ป่วย..." class="w-full p-2 border rounded">
+                        <select id="status-filter" class="w-full p-2 border rounded">
+                            <option value="">ทุกสถานะ</option><option value="submitted">Submitted</option>
+                            <option value="initiated">Initiated</option><option value="pending">Pending</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left table">
+                            <thead><tr>
+                                <th class="p-3">Request ID</th>
+                                <th class="p-3">วันที่</th>
+                                <th class="p-3">HN</th>
+                                <th class="p-3">ชื่อผู้ป่วย</th>
+                                <th class="p-3">หอผู้ป่วย</th>
+                                <th class="p-3">ส่วนประกอบ</th>
+                                <th class="p-3">สถานะ</th>
+                            </tr></thead>
+                            <tbody id="requests-table-body"></tbody>
+                        </table>
+                        <div id="table-loader" class="text-center p-8"><div class="loader"></div></div>
+                    </div>
+                    <div id="pagination-controls" class="flex justify-between items-center mt-4"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentTab = 'dashboard', requestsPage = 1, chartInstances = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupPasswordProtection();
+        });
+
+        function setupPasswordProtection() {
+            const protectionDiv = document.getElementById('password-protection');
+            const passwordInput = document.getElementById('password-input');
+            const submitButton = document.getElementById('password-submit');
+            const errorP = document.getElementById('password-error');
+            
+            passwordInput.focus();
+
+            // REFINEMENT: Hardcoded password as requested
+            const CORRECT_PASSWORD = "FLUKEE1112";
+
+            const checkPassword = () => {
+                if (passwordInput.value === CORRECT_PASSWORD) {
+                    protectionDiv.style.display = 'none';
+                    initializeApp();
+                } else {
+                    errorP.innerText = 'Incorrect Password!';
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            };
+            submitButton.addEventListener('click', checkPassword);
+            passwordInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') checkPassword();
+            });
+        }
+        
+        function initializeApp() {
+            document.querySelectorAll('.tab-button').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+            document.getElementById('search-input').addEventListener('input', debounce(fetchRequests, 500));
+            document.getElementById('status-filter').addEventListener('change', () => { requestsPage = 1; fetchRequests(); });
+            loadInitialData();
+        }
+
+        const loadInitialData = () => currentTab === 'dashboard' ? fetchDashboardSummary() : fetchRequests();
+        
+        function switchTab(tabName) {
+            currentTab = tabName;
+            requestsPage = 1;
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `${tabName}-content`));
+            loadInitialData();
+        }
+
+        async function fetchAPI(url) {
+            const response = await fetch(url);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'API Error');
+            return data;
+        }
+
+        async function fetchDashboardSummary() {
+            const loader = document.getElementById('dashboard-loader'), grid = document.getElementById('dashboard-grid');
+            grid.classList.add('hidden'); loader.style.display = 'block';
+            try {
+                const data = await fetchAPI('/api/dashboard?action=get_summary');
+                renderDashboard(data);
+            } catch (error) {
+                loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
+            } finally {
+                grid.classList.remove('hidden'); loader.style.display = 'none';
+            }
+        }
+
+        async function fetchRequests() {
+            const search = document.getElementById('search-input').value, status = document.getElementById('status-filter').value;
+            const tableBody = document.getElementById('requests-table-body'), loader = document.getElementById('table-loader');
+            tableBody.innerHTML = ''; loader.style.display = 'block';
+            try {
+                const data = await fetchAPI(`/api/dashboard?action=get_requests&page=${requestsPage}&search=${encodeURIComponent(search)}&status=${status}`);
+                renderRequestsTable(data);
+                renderPagination(data);
+            } catch (error) {
+                loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('stat-today').innerText = data.requests_today || 0;
+            document.getElementById('stat-submitted').innerText = data.submitted_count || 0;
+            const recentList = document.getElementById('recent-requests-list');
+            recentList.innerHTML = data.recent_requests.length > 0 ? data.recent_requests.map(req => `
+                <tr class="border-b"><td class="p-2 font-mono text-xs">${req.request_id}</td><td class="p-2">${req.patient_name || '-'}</td>
+                <td class="p-2">${req.ward_name || '-'}</td><td class="p-2 text-gray-500">${formatDateTime(req.created_at)}</td></tr>
+            `).join('') : `<tr><td colspan="4" class="p-2 text-gray-500">ไม่มีข้อมูลล่าสุด</td></tr>`;
+            renderChart('bloodTypeChart', 'pie', data.by_blood_type.map(d => d.component_type), data.by_blood_type.map(d => d.count), 'จำแนกตามประเภทเลือด (ที่ยืนยันแล้ว)');
+            renderChart('wardChart', 'bar', data.by_ward.map(d => d.ward_name), data.by_ward.map(d => d.count), '10 หอผู้ป่วยที่ขอใช้เลือดสูงสุด (ที่ยืนยันแล้ว)');
+        }
+        
+        function renderRequestsTable(data) {
+            const tableBody = document.getElementById('requests-table-body');
+            if (!data.requests || data.requests.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-500">ไม่พบข้อมูล</td></tr>`;
+                return;
+            }
+            // REFINEMENT: Displaying HN in its own column
+            tableBody.innerHTML = data.requests.map(req => {
+                const component = req.request_data?.bloodType ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)` : req.blood_type || '';
+                return `
+                <tr class="border-b">
+                    <td class="p-3 font-mono text-xs">${req.request_id}</td>
+                    <td class="p-3">${formatDateTime(req.created_at)}</td>
+                    <td class="p-3">${req.hospital_number || '-'}</td>
+                    <td class="p-3">${req.patient_name || '-'}</td>
+                    <td class="p-3">${req.ward_name || '-'}</td>
+                    <td class="p-3">${component}</td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(req.status)}">${req.status}</span></td>
+                </tr>`}).join('');
+        }
+
+        function renderPagination(data) {
+            const controls = document.getElementById('pagination-controls');
+            if (!data || data.total_records === 0) { controls.innerHTML = ''; return; }
+            controls.innerHTML = `
+                <span class="text-sm text-gray-700">หน้า ${data.current_page} / ${data.total_pages} (ทั้งหมด ${data.total_records} รายการ)</span>
+                <div>
+                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''} class="px-3 py-1 border rounded disabled:opacity-50">ก่อนหน้า</button>
+                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''} class="ml-2 px-3 py-1 border rounded disabled:opacity-50">ถัดไป</button>
+                </div>`;
+        }
+
+        const changePage = (dir) => { requestsPage += dir; fetchRequests(); };
+        const getStatusClass = (s) => ({submitted:'bg-green-100 text-green-800', pending:'bg-amber-100 text-amber-800', initiated:'bg-blue-100 text-blue-800'}[s] || 'bg-gray-100 text-gray-800');
+        const formatDateTime = (iso) => iso ? new Date(iso).toLocaleString('th-TH', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '-';
+        const debounce = (fn, delay) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); } };
+
+        function renderChart(canvasId, type, labels, data, title) {
+            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            chartInstances[canvasId] = new Chart(ctx, {
+                type: type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'จำนวนคำขอ', data: data,
+                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
+                        borderColor: '#fff', borderWidth: type === 'pie' ? 2 : 0
+                    }]
+                },
+                options: { responsive: true, plugins: { legend: { position: type === 'pie' ? 'top' : 'none' }, title: { display: true, text: title, font: { size: 16 } } } }
+            });
+        }
+    </script>
+</body>
+</html>
