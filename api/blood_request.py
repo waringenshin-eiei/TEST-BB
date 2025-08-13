@@ -1,646 +1,140 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ระบบแจ้งใช้เลือด | Blood Request System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sarabun': ['Sarabun', 'system-ui', 'sans-serif'],
-                    },
-                    colors: {
-                        'medical-red': { 50:'#fef7f7', 100:'#fee2e2', 200:'#fecaca', 300:'#fca5a5', 400:'#f87171', 500:'#ef4444', 600:'#dc2626', 700:'#b91c1c', 800:'#991b1b', 900:'#7f1d1d' },
-                        'medical-blue': { 50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1', 800: '#075985', 900: '#0c4a6e' },
-                        'medical-gold': { 50: '#fffbeb', 100: '#fef3c7', 200: '#fde68a', 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706', 700: '#b45309', 800: '#92400e', 900: '#78350f' }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Sarabun', system-ui, sans-serif;
-            background: #f8fafc;
-            min-height: 100vh;
-        }
-        .main-container {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
-        }
-        .form-page { display: none; animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        .form-page.active { display: block; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .progress-fill { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
-        .input-medical {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 2px solid #e5e7eb;
-            background: #f9fafb;
-            font-size: 16px; /* Prevents iOS zoom on focus */
-        }
-        .input-medical:focus {
-            background: #fff;
-            box-shadow: 0 0 0 3px var(--tw-shadow-color);
-        }
-        .floating-label input:focus + .label-float,
-        .floating-label input:not(:placeholder-shown) + .label-float,
-        .floating-label textarea:focus + .label-float,
-        .floating-label textarea:not(:placeholder-shown) + .label-float {
-            transform: translateY(-1.6rem) scale(0.85);
-            color: var(--tw-label-color);
-        }
-        .label-float {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #f9fafb; /* Must match input background */
-        }
-        .floating-label input:focus + .label-float { background: #fff; }
+# api/blood_request.py - Refined to correctly look up user_id
+from http.server import BaseHTTPRequestHandler
+import json
+import os
+import traceback
+from datetime import datetime, timezone, timedelta
+import psycopg
+import requests
 
-        /* --- Theme-based styling --- */
-        .theme-red-cells .input-medical:focus { --tw-shadow-color: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
-        .theme-red-cells .floating-label { --tw-label-color: #dc2626; }
-        .theme-red-cells .progress-fill,
-        .theme-red-cells .btn-primary { background: linear-gradient(135deg, #f87171, #dc2626); }
-        .theme-red-cells .section-header { border-left-color: #ef4444; }
+# --- Configuration ---
+POSTGRES_URL = os.environ.get('POSTGRES_URL')
+LINE_TOKEN = os.environ.get('LINE_TOKEN', '')
+THAILAND_TZ = timezone(timedelta(hours=7))
 
-        .theme-plasma .input-medical:focus { --tw-shadow-color: rgba(245, 158, 11, 0.2); border-color: #f59e0b; }
-        .theme-plasma .floating-label { --tw-label-color: #d97706; }
-        .theme-plasma .progress-fill,
-        .theme-plasma .btn-primary { background: linear-gradient(135deg, #fbbf24, #d97706); }
-        .theme-plasma .section-header { border-left-color: #f59e0b; }
-        
-        .theme-cryo .input-medical:focus { --tw-shadow-color: rgba(14, 165, 233, 0.2); border-color: #0ea5e9; }
-        .theme-cryo .floating-label { --tw-label-color: #0284c7; }
-        .theme-cryo .progress-fill,
-        .theme-cryo .btn-primary { background: linear-gradient(135deg, #38bdf8, #0284c7); }
-        .theme-cryo .section-header { border-left-color: #0ea5e9; }
-        
-        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color); }
-        .btn-primary:disabled { background: linear-gradient(135deg, #9ca3af, #6b7280); cursor: not-allowed; transform: none; box-shadow: none; }
-        .btn-secondary { background: #fff; color: #4b5563; border: 2px solid #d1d5db; transition: all 0.3s ease; }
-        .btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; transform: translateY(-2px); }
+# --- Helper Functions (get_db_connection, send_line_notification) ---
+def get_db_connection():
+    if not POSTGRES_URL: return None
+    try:
+        return psycopg.connect(POSTGRES_URL)
+    except psycopg.OperationalError:
+        return None
 
-        /* Card Styles with BORDERS */
-        .product-card, .selection-card {
-            border-radius: 1.5rem;
-            border: 2px solid #e2e8f0;
-            background: #fff;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
-            position: relative;
-        }
-        .selection-card { border-radius: 1rem; }
-        .product-card:hover, .selection-card:hover {
-            transform: translateY(-5px);
-            border-color: var(--tw-accent-color);
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
-        }
-        .product-card.selected, .selection-card.selected {
-            border-color: var(--tw-accent-color);
-            transform: translateY(-2px);
-            box-shadow: 0 0 0 4px var(--tw-shadow-color);
-        }
-        .theme-red-cells .selection-card.selected { --tw-accent-color: #dc2626; background-color: #fef2f2; }
-        .theme-plasma .selection-card.selected { --tw-accent-color: #d97706; background-color: #fffbeb; }
-        .theme-cryo .selection-card.selected { --tw-accent-color: #0284c7; background-color: #f0f9ff; }
-        
+def send_line_notification(user_id, message_text):
+    if not LINE_TOKEN:
+        print("WARNING: LINE_TOKEN is not configured. Skipping notification.")
+        return False
+    api_url = 'https://api.line.me/v2/bot/message/push'
+    headers = {'Content-Type': 'application/json', 'Authorization': f'Bearer {LINE_TOKEN}'}
+    payload = {'to': user_id, 'messages': [{'type': 'text', 'text': message_text}]}
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=5)
+        response.raise_for_status()
+        print(f"✅ LINE notification sent successfully to {user_id}")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"❌ ERROR: Failed to send LINE notification to {user_id}: {e}")
+        if e.response is not None:
+            print(f"❌ LINE API Response: {e.response.text}")
+        return False
 
-        /* Autocomplete Styles */
-        .autocomplete-container { position: relative; }
-        .autocomplete-items {
-            position: absolute; top: 100%; left: 0; right: 0; z-index: 99;
-            max-height: 240px; overflow-y: auto; background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px); border: 2px solid #e5e7eb; border-top: none;
-            border-radius: 0 0 1rem 1rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
-        .autocomplete-items div {
-            padding: 1rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f3f4f6;
-            transition: all 0.2s ease; font-weight: 500;
-        }
-        .autocomplete-items div:hover, .autocomplete-active { background-color: #f3f4f6; }
+# --- Main Request Handler ---
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            request_data = json.loads(post_data.decode('utf-8'))
 
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+            request_id = request_data.get('request_id')
+            if not request_id:
+                return self._send_response(400, {"error": "Missing required field: request_id"})
 
-        /* Summary Report Style */
-        .summary-docket {
-            background-color: #f8fafc;
-            border: 2px dashed #d1d5db;
-            border-radius: 1.25rem;
-            padding: 1.5rem;
-            margin-top: 2rem;
-        }
-        .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1.5rem; }
-        .summary-label { font-weight: 600; color: #4b5563; text-align: right; }
-        .summary-value { font-weight: 500; color: #111827; }
-    </style>
-</head>
-<body class="py-6 px-3 md:py-8 md:px-4">
-    <div class="max-w-4xl mx-auto">
-        <div id="mainContainer" class="main-container rounded-3xl p-6 md:p-10 theme-red-cells">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl md:text-5xl font-bold text-gray-800 mb-2">ระบบแจ้งใช้เลือด</h1>
-                <h2 class="text-lg md:text-xl font-medium text-gray-500">Blood Request System</h2>
-            </div>
-            
-            <div class="mb-8">
-                <div class="flex justify-between items-center mb-2">
-                    <p id="stepDescription" class="font-semibold text-gray-700"></p>
-                    <span class="text-lg font-bold text-gray-500">
-                        <span id="currentStep">1</span> / 4
-                    </span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2.5">
-                    <div id="progressBar" class="progress-fill h-2.5 rounded-full" style="width: 25%;"></div>
-                </div>
-            </div>
+            conn = get_db_connection()
+            if not conn:
+                return self._send_response(503, {"error": "Database service is unavailable."})
 
-            <div class="form-page active" id="page1">
-                <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">เลือกผลิตภัณฑ์เลือด</h2>
-                    <p class="text-gray-600 mt-1">Select Blood Product</p>
-                </div>
-                
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                    <div class="product-card lg:col-span-2 p-6" data-type="redcell" style="--tw-accent-color: #ef4444; --tw-shadow-color: rgba(239, 68, 68, 0.2);">
-                        <h3 class="text-2xl font-bold text-medical-red-600">เม็ดเลือดแดงชนิดต่างๆ (Red Blood Cells)</h3>
-                        <p class="text-gray-600 mt-2">สำหรับผู้ป่วยที่ต้องการเพิ่มความสามารถในการขนส่งออกซิเจน เช่น PRC, LPRC, และ LDRC</p>
-                    </div>
-
-                    <div class="product-card p-6" data-type="ffp" style="--tw-accent-color: #f59e0b; --tw-shadow-color: rgba(245, 158, 11, 0.2);">
-                        <h3 class="text-xl font-bold text-medical-gold-600">พลาสมา (Fresh Frozen Plasma)</h3>
-                        <p class="text-sm text-gray-500 mt-1">สำหรับทดแทนปัจจัยการแข็งตัวของเลือด</p>
-                    </div>
-
-                    <div class="product-card p-6" data-type="cryoprecipitate" style="--tw-accent-color: #0ea5e9; --tw-shadow-color: rgba(14, 165, 233, 0.2);">
-                        <h3 class="text-xl font-bold text-medical-blue-600">ไครโอพรีซิพเิเทต (Cryoprecipitate)</h3>
-                        <p class="text-sm text-gray-500 mt-1">ส่วนประกอบที่เข้มข้นของ FFP</p>
-                    </div>
-                </div>
-
-                <div class="flex justify-end mt-8">
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage1" disabled>ถัดไป →</button>
-                </div>
-            </div>
-
-            <div class="form-page" id="page2">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">ข้อมูลผู้ป่วยและผู้แจ้ง</h2>
-                    <p class="text-gray-600 mt-1">Patient & Reporter Information</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
-                    <div class="floating-label mt-6">
-                        <input type="text" id="hn" name="hn" required class="input-medical w-full h-14 px-4 rounded-xl" placeholder=" ">
-                        <label class="label-float left-4 top-4 text-gray-500">HN ผู้ป่วย (Hospital Number) <span class="text-red-500">*</span></label>
-                    </div>
-                    <div class="floating-label mt-6">
-                        <input type="text" id="patientName" name="patientName" required class="input-medical w-full h-14 px-4 rounded-xl" placeholder=" ">
-                        <label class="label-float left-4 top-4 text-gray-500">ชื่อผู้ป่วย (Patient Name) <span class="text-red-500">*</span></label>
-                    </div>
-                    <div class="autocomplete-container floating-label mt-6">
-                        <input type="text" id="wardName" name="wardName" required class="input-medical w-full h-14 px-4 rounded-xl" autocomplete="off" placeholder=" ">
-                        <label class="label-float left-4 top-4 text-gray-500">หอผู้ป่วย (Ward) <span class="text-red-500">*</span></label>
-                    </div>
-                     <div class="floating-label mt-6">
-                        <input type="text" id="reporterName" name="reporterName" required class="input-medical w-full h-14 px-4 rounded-xl" placeholder=" ">
-                        <label class="label-float left-4 top-4 text-gray-500">ชื่อผู้แจ้ง (Reporter Name) <span class="text-red-500">*</span></label>
-                    </div>
-                </div>
-                <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage2" disabled>ถัดไป →</button>
-                </div>
-            </div>
-
-            <div class="form-page" id="page3">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">รายละเอียดผลิตภัณฑ์</h2>
-                    <p class="text-gray-600 mt-1">Product Details</p>
-                </div>
-                <div id="typeSpecificContent"></div>
-                <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage3" disabled>ถัดไป →</button>
-                </div>
-            </div>
-
-            <div class="form-page" id="page4">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">การจัดส่งและสรุปข้อมูล</h2>
-                    <p class="text-gray-600 mt-1">Delivery & Summary</p>
-                </div>
-                <div class="mb-6">
-                    <label class="text-lg font-semibold text-gray-700">รอบเวลาจัดส่ง (Delivery Time)<span class="text-red-500">*</span></label>
-                    <div class="time-cards-grid grid gap-3 mt-3" id="deliveryTimeCards"></div>
-                </div>
-                <div class="autocomplete-container floating-label mt-6">
-                    <input type="text" id="deliveryLocation" name="deliveryLocation" required class="input-medical w-full h-14 px-4 rounded-xl" autocomplete="off" placeholder=" ">
-                    <label class="label-float left-4 top-4 text-gray-500">สถานที่ส่ง (Delivery Location) <span class="text-red-500">*</span></label>
-                </div>
-
-                <div class="summary-docket" id="summaryCard"></div>
-                
-                <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
-                    <button class="btn-primary text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg flex items-center justify-center" id="submitBtn" disabled>ยืนยันและส่งข้อมูล</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
-        <div class="main-container rounded-3xl p-8 text-center max-w-md mx-auto">
-            <div id="modalContent"></div>
-            <button onclick="closeWindow()" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg w-full mt-6">ปิดหน้าต่าง (Close)</button>
-        </div>
-    </div>
-
-    <script>
-        // --- State Management ---
-        let currentPage = 1;
-        let selectedBloodType = '';
-        let selectedDeliveryTime = { id: null, time: null };
-        let lineUserId = '';
-        let allWards = [];
-        let deliverySchedules = [];
-        let formData = {};
-
-        const stepDescriptions = {
-            1: 'ขั้นตอนที่ 1: เลือกผลิตภัณฑ์',
-            2: 'ขั้นตอนที่ 2: กรอกข้อมูล',
-            3: 'ขั้นตอนที่ 3: ระบุรายละเอียด',
-            4: 'ขั้นตอนที่ 4: ยืนยันข้อมูล'
-        };
-
-        // --- Initialization ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            lineUserId = urlParams.get('line_user_id');
-            if (!lineUserId) {
-                showErrorModal('ไม่พบข้อมูลผู้ใช้ (LINE User ID)', 'กรุณาเริ่มต้นการแจ้งใช้เลือดจากในแอปพลิเคชัน LINE อีกครั้ง');
-                return;
-            }
-            fetchInitialData();
-            setupEventListeners();
-            updatePageUI();
-        });
-
-        async function fetchInitialData() {
-            try {
-                // MOCK API: In a real app, this would fetch from your backend.
-                const mockData = {
-                    wards: ["2ก", "2ข", "IMC 2ค", "NICU", "2ง", "IMC 2ง", "2ฉ", "3ก", "3ข", "3ค", "3ง", "3จ", "IMC 3จ", "3ฉ", "4ก", "4ข1", "4ข2", "4ข3", "4ค", "4ง", "5ก", "5ข", "5ค", "5ง", "5จ", "6ก", "6ข", "6จ", "OPD AE", "AE1", "AE2", "AE3", "AE4", "SICU1", "SICU2", "SICU3", "NSICU", "Burn Unit", "CCU", "PICU", "MICU 1", "MICU 2", "MICU 3", "CVT-ICU", "SCTU 1", "หอสงฆ์อาพาธ", "8B", "8C", "9A", "9B", "9C", "สว 11", "สว 12", "สว 13", "สว 14", "สว 15", "กว. 6/1", "กว. 6/2", "กว. 7/1", "ห้องคลอด", "ห้องให้เลือดผู้ป่วยนอก", "ไตเทียม", "ห้อง x-ray", "Endoscope สว.ชั้น4"],
-                    schedules: [
-                        { id: 1, time: "10.00น." }, { id: 2, time: "11.00น." }, { id: 3, time: "12.00น." },
-                        { id: 4, time: "13.00น." }, { id: 5, time: "14.00น." }, { id: 6, time: "15.00น." },
-                        { id: 7, time: "16.00น." }, { id: 8, time: "18.00น." }, { id: 9, time: "20.00น." },
-                        { id: 10, time: "21.00น." }, { id: 11, time: "23.00น." }
-                    ],
-                    user_profile: {
-                        ward_name: "MICU 1" // ONLY the ward is detected dynamically
-                    }
-                };
-
-                allWards = mockData.wards;
-                deliverySchedules = mockData.schedules;
-                
-                const userProfile = mockData.user_profile || {};
-                
-                // Pre-fill dynamically detected data
-                document.getElementById('wardName').value = userProfile.ward_name || '';
-                document.getElementById('deliveryLocation').value = userProfile.ward_name || '';
-
-                // Reporter name is intentionally left BLANK
-                document.getElementById('reporterName').value = ''; 
-                 
-                // Trigger 'input' event to update floating labels for pre-filled fields
-                if (userProfile.ward_name) {
-                     document.getElementById('wardName').dispatchEvent(new Event('input', { bubbles: true }));
-                     document.getElementById('deliveryLocation').dispatchEvent(new Event('input', { bubbles: true }));
-                }
-
-                setupAutocomplete(document.getElementById("wardName"), allWards);
-                setupAutocomplete(document.getElementById("deliveryLocation"), allWards);
-                createDeliveryTimeCards();
-
-            } catch (error) {
-                console.error('Error fetching initial data:', error);
-                showErrorModal('ไม่สามารถโหลดข้อมูลได้', 'กรุณาลองใหม่อีกครั้ง');
-            }
-        }
-        
-        // --- UI & Page Navigation ---
-        const nextPage = () => { if (currentPage < 4) { currentPage++; updatePageUI(); } };
-        const previousPage = () => { if (currentPage > 1) { currentPage--; updatePageUI(); } };
-
-        function updatePageUI() {
-            document.querySelectorAll('.form-page').forEach(page => page.classList.remove('active'));
-            document.getElementById(`page${currentPage}`).classList.add('active');
-            
-            const progress = (currentPage / 4) * 100;
-            document.getElementById('progressBar').style.width = `${progress}%`;
-            document.getElementById('stepDescription').textContent = stepDescriptions[currentPage];
-            
-            if (currentPage === 3) showTypeSpecificFields();
-            if (currentPage === 4) updateSummary();
-        }
-
-        // --- Event Listeners Setup ---
-        function setupEventListeners() {
-            document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', handleProductSelection));
-            ['nextPage1', 'nextPage2', 'nextPage3'].forEach(id => document.getElementById(id).addEventListener('click', nextPage));
-            ['hn', 'patientName', 'wardName', 'reporterName', 'deliveryLocation'].forEach(id => {
-                const el = document.getElementById(id);
-                el.addEventListener('input', () => validatePage(currentPage));
-            });
-            document.getElementById('wardName').addEventListener('change', e => {
-                document.getElementById('deliveryLocation').value = e.target.value;
-                validatePage(4);
-            });
-            document.getElementById('submitBtn').addEventListener('click', submitForm);
-        }
-
-        function handleProductSelection(event) {
-            const card = event.currentTarget;
-            selectedBloodType = card.dataset.type;
-            
-            const mainContainer = document.getElementById('mainContainer');
-            mainContainer.classList.remove('theme-red-cells', 'theme-plasma', 'theme-cryo');
-            if (selectedBloodType === 'redcell') mainContainer.classList.add('theme-red-cells');
-            if (selectedBloodType === 'ffp') mainContainer.classList.add('theme-plasma');
-            if (selectedBloodType === 'cryoprecipitate') mainContainer.classList.add('theme-cryo');
-
-            document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-            document.getElementById('nextPage1').disabled = false;
-        }
-
-        // --- Dynamic Content Generation ---
-        function createDeliveryTimeCards() {
-            const container = document.getElementById('deliveryTimeCards');
-            container.innerHTML = deliverySchedules.map(({id, time}) => `
-                <div class="selection-card text-center p-3 cursor-pointer time-card" data-time-id="${id}" data-time-value="${time}">
-                    <div class="text-xl">🕐</div>
-                    <div class="text-base font-semibold mt-1">${time}</div>
-                </div>`).join('');
-            container.querySelectorAll('.time-card').forEach(card => card.addEventListener('click', () => {
-                container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
-                validatePage(4);
-            }));
-        }
-
-        function showTypeSpecificFields() {
-            const container = document.getElementById('typeSpecificContent');
-            let content = `<div class="floating-label mt-6"><input type="number" id="quantity" required class="input-medical w-full h-14 px-4 rounded-xl" min="1" max="20" placeholder=" "><label class="label-float left-4 top-4 text-gray-500">จำนวน (Units)<span class="text-red-500">*</span></label></div>`;
-            
-            const subtypes = {
-                redcell: [{ key: "PRC", value: "Packed Red Cell" }, { key: "LPRC", value: "Leukocyte Poor" }, { key: "LDRC", value: "Leukocyte Depleted" }],
-                ffp: [{ key: "ละลายพร้อมใช้", value: "Ready to Use" }, { key: "ประเภทแช่แข็ง", value: "Frozen Type" }],
-                cryoprecipitate: [{ key: "ละลายพร้อมใช้", value: "Ready to Use" }, { key: "ประเภทแช่แข็ง", value: "Frozen Type" }]
-            };
-            
-            content += `<div class="mt-6"><label class="text-lg font-semibold text-gray-700">ชนิดย่อย (Subtype)<span class="text-red-500">*</span></label><div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3" id="subtypeCards">`;
-            subtypes[selectedBloodType].forEach(sub => {
-                content += `<div class="selection-card text-center p-4 cursor-pointer subtype-card"><h4 class="text-lg font-bold">${sub.key}</h4><p class="text-sm text-gray-500">${sub.value}</p></div>`;
-            });
-            content += `</div></div><input type="hidden" id="subtype">`;
-            container.innerHTML = content;
-
-            container.querySelectorAll('input').forEach(input => input.addEventListener('input', () => validatePage(3)));
-            container.querySelectorAll('.subtype-card').forEach(card => card.addEventListener('click', () => {
-                container.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                document.getElementById('subtype').value = card.dataset.subtype;
-                validatePage(3);
-            }));
-            validatePage(3);
-        }
-
-        function updateSummary() {
-            formData = { // Gather all form data
-                hn: document.getElementById('hn').value,
-                patientName: document.getElementById('patientName').value,
-                wardName: document.getElementById('wardName').value,
-                bloodType: selectedBloodType,
-                quantity: document.getElementById('quantity')?.value,
-                subtype: document.getElementById('subtype')?.value,
-                deliveryTime: selectedDeliveryTime.time,
-                deliveryLocation: document.getElementById('deliveryLocation').value,
-                reporterName: document.getElementById('reporterName').value
-            };
-            
-            const summaryContainer = document.getElementById('summaryCard');
-            summaryContainer.innerHTML = `
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-3">ใบสรุปคำขอ (Request Summary)</h3>
-                <div class="summary-grid mt-4">
-                    <span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName}</span>
-                    <span class="summary-label">HN:</span> <span class="summary-value">${formData.hn}</span>
-                    <span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName}</span>
-                    <span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${formData.bloodType.toUpperCase()}</span>
-                    <span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype} (${formData.quantity} Units)</span>
-                    <span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime}</span>
-                    <span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation}</span>
-                    <span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName}</span>
-                </div>`;
-        }
-
-        // --- Validation ---
-        function validatePage(page) {
-            let isValid = false;
-            if (page === 2) {
-                isValid = document.getElementById('hn').value && document.getElementById('patientName').value && document.getElementById('wardName').value && document.getElementById('reporterName').value;
-                document.getElementById('nextPage2').disabled = !isValid;
-            } else if (page === 3) {
-                isValid = document.getElementById('quantity')?.value > 0 && document.getElementById('subtype')?.value;
-                document.getElementById('nextPage3').disabled = !isValid;
-            } else if (page === 4) {
-                isValid = selectedDeliveryTime.id && document.getElementById('deliveryLocation').value;
-                document.getElementById('submitBtn').disabled = !isValid;
-            }
-        }
-        
-        // --- Form Submission ---
-        async function submitForm() {
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = `<div class="loading-spinner"></div> <span>กำลังส่ง...</span>`;
-            
-            const finalData = {
-                line_user_id: lineUserId,
-                schedule_id: selectedDeliveryTime.id,
-                ...formData
-            };
-            
-            try {
-                const response = await fetch('/api/submit_request', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(finalData)
-                });
-                const result = await response.json();
-
-                if (!response.ok) throw new Error(result.message || 'Server error');
-                
-                showSuccessModal('ส่งข้อมูลสำเร็จแล้ว', `หมายเลขคำขอของคุณคือ: <br><strong class="font-mono text-lg">${result.request_id}</strong>`);
-
-            } catch (error) {
-                console.error('Submission error:', error);
-                showErrorModal('เกิดข้อผิดพลาดในการส่งข้อมูล', error.message);
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = `ยืนยันและส่งข้อมูล`;
-            }
-        }
-        
-        // --- Modals & Utils ---
-        function showSuccessModal(title, message) {
-            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
-            document.getElementById('messageModal').classList.remove('hidden');
-        }
-        function showErrorModal(title, message) {
-            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-red-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
-            document.getElementById('messageModal').classList.remove('hidden');
-        }
-        function closeWindow() {
-            document.getElementById('modalContent').innerHTML = `<p>คุณสามารถปิดหน้าต่างนี้ได้</p>`;
-            document.querySelector('#messageModal button').style.display = 'none';
-        }
-
-        // --- Autocomplete Logic (Restored from your original file) ---
-        function setupAutocomplete(input, suggestions) {
-            if (!input || !suggestions) return;
-            
-            let currentFocus = -1;
-            
-            input.addEventListener("input", function(e) {
-                closeAllLists();
-                
-                const val = this.value;
-                if (!val) return false;
-                
-                currentFocus = -1;
-                
-                const listContainer = document.createElement("div");
-                listContainer.setAttribute("class", "autocomplete-items");
-                this.parentNode.appendChild(listContainer);
-                
-                const filteredSuggestions = suggestions.filter(item => 
-                    item.toLowerCase().includes(val.toLowerCase())
-                ).sort((a, b) => {
-                    const aStarts = a.toLowerCase().startsWith(val.toLowerCase());
-                    const bStarts = b.toLowerCase().startsWith(val.toLowerCase());
-                    if (aStarts && !bStarts) return -1;
-                    if (!aStarts && bStarts) return 1;
-                    return a.localeCompare(b);
-                });
-                
-                filteredSuggestions.slice(0, 10).forEach(item => {
-                    const itemDiv = document.createElement("div");
-                    const regex = new RegExp(`(${val})`, 'gi');
-                    const highlightedText = item.replace(regex, '<strong class="text-medical-red-600 bg-medical-red-100 px-1 rounded">$1</strong>');
-                    itemDiv.innerHTML = highlightedText;
+            try:
+                with conn.cursor() as cur:
+                    # --- REFINEMENT: Correctly fetch the user_id from the existing request ---
+                    # Instead of looking in ward_id, we find the user who started this request.
+                    cur.execute("SELECT user_id FROM blood_requests WHERE request_id = %s", (request_id,))
+                    result = cur.fetchone()
+                    if not result:
+                        return self._send_response(404, {"error": f"Request ID '{request_id}' not found."})
                     
-                    itemDiv.addEventListener("click", function() {
-                        input.value = item;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                        closeAllLists();
-                        
-                        if (input.id === 'wardName') {
-                            const deliveryInput = document.getElementById('deliveryLocation');
-                            if (deliveryInput && !deliveryInput.value) {
-                                deliveryInput.value = item;
-                                deliveryInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                deliveryInput.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        }
-                    });
-                    
-                    listContainer.appendChild(itemDiv);
-                });
-                
-                if (filteredSuggestions.length === 0) {
-                    const noResultDiv = document.createElement("div");
-                    noResultDiv.innerHTML = '<span class="text-gray-500 italic">ไม่พบรายการที่ตรงกัน</span>';
-                    noResultDiv.className = 'p-4 text-center';
-                    listContainer.appendChild(noResultDiv);
-                }
-            });
-            
-            input.addEventListener("keydown", function(e) {
-                const items = this.parentNode.querySelector(".autocomplete-items");
-                if (items) {
-                    const itemDivs = items.getElementsByTagName("div");
-                    if (e.keyCode === 40) { // Down
-                        e.preventDefault();
-                        currentFocus++;
-                        addActive(itemDivs);
-                    } else if (e.keyCode === 38) { // Up
-                        e.preventDefault();
-                        currentFocus--;
-                        addActive(itemDivs);
-                    } else if (e.keyCode === 13) { // Enter
-                        e.preventDefault();
-                        if (currentFocus > -1 && itemDivs[currentFocus]) {
-                            itemDivs[currentFocus].click();
-                        }
-                    } else if (e.keyCode === 27) { // Escape
-                        closeAllLists();
-                    }
-                }
-            });
-            
-            input.addEventListener("focus", function() {
-                if (this.value.length >= 1) {
-                    this.dispatchEvent(new Event('input'));
-                }
-            });
-            
-            function addActive(items) {
-                if (!items) return false;
-                removeActive(items);
-                if (currentFocus >= items.length) currentFocus = 0;
-                if (currentFocus < 0) currentFocus = items.length - 1;
-                if (items[currentFocus]) {
-                    items[currentFocus].classList.add("autocomplete-active");
-                    items[currentFocus].scrollIntoView({ block: 'nearest' });
-                }
-            }
-            
-            function removeActive(items) {
-                for (let i = 0; i < items.length; i++) {
-                    items[i].classList.remove("autocomplete-active");
-                }
-            }
-            
-            function closeAllLists(except = null) {
-                const autocompleteItems = document.getElementsByClassName("autocomplete-items");
-                for (let i = 0; i < autocompleteItems.length; i++) {
-                    if (except !== autocompleteItems[i] && except !== input) {
-                        autocompleteItems[i].parentNode.removeChild(autocompleteItems[i]);
-                    }
-                }
-            }
-            
-            document.addEventListener("click", function(e) {
-                if (!input.contains(e.target)) {
-                    closeAllLists(e.target);
-                }
-            });
+                    user_id_to_notify = result[0]
+                    print(f"INFO: Found original user_id '{user_id_to_notify}' for request_id '{request_id}'")
+                    # --- END REFINEMENT ---
 
-            document.addEventListener("scroll", function() {
-                closeAllLists();
-            });
-        }
-    </script>
-</body>
-</html>
+                    # Now, update the record with all the details from the form
+                    sql_update = """
+                        UPDATE blood_requests SET
+                            blood_type = %s, patient_name = %s, hospital_number = %s, ward_name = %s,
+                            blood_details = %s, delivery_time = %s, delivery_location = %s,
+                            reporter_name = %s, status = %s, request_data = %s, updated_at = %s
+                        WHERE request_id = %s
+                    """
+                    updated_at = datetime.now(THAILAND_TZ)
+                    cur.execute(sql_update, (
+                        request_data.get('bloodType'), request_data.get('patientName'), request_data.get('hospitalNumber'),
+                        request_data.get('wardName'), request_data.get('bloodDetails'), request_data.get('deliveryTime'),
+                        request_data.get('deliveryLocation'), request_data.get('reporterName'), 'submitted',
+                        json.dumps(request_data), updated_at, request_id
+                    ))
+
+                    # Insert component details (deleting any old ones first to be safe)
+                    cur.execute("DELETE FROM blood_components WHERE request_id = %s", (request_id,))
+                    sql_components = """
+                        INSERT INTO blood_components (request_id, component_type, quantity, component_subtype, properties)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """
+                    cur.execute(sql_components, (
+                        request_id, request_data.get('bloodType'), request_data.get('quantity'),
+                        request_data.get('subtype'), json.dumps(request_data.get('properties', {}))
+                    ))
+                    
+                    conn.commit()
+                    print(f"✅ DB Update successful for {request_id}")
+
+                    # Send final confirmation notification to the original user
+                    line_message = (
+                        f"✅ ยืนยันข้อมูลสำเร็จ\n"
+                        f"Request ID: {request_id}\n\n"
+                        f"ผู้ป่วย: {request_data.get('patientName')} (HN: {request_data.get('hospitalNumber')})\n"
+                        f"หอผู้ป่วย: {request_data.get('wardName')}\n"
+                        f"ประเภทเลือด: {request_data.get('bloodType', '').upper()} จำนวน {request_data.get('quantity')} Unit\n\n"
+                        f"ธนาคารเลือดได้รับข้อมูลของท่านแล้ว"
+                    )
+                    send_line_notification(user_id_to_notify, line_message)
+
+                    self._send_response(200, {"message": "Request updated successfully.", "request_id": request_id})
+
+            except psycopg.Error as e:
+                conn.rollback()
+                print(f"ERROR: Database transaction failed: {e}")
+                self._send_response(500, {"error": f"Database error: {e}"})
+            finally:
+                if conn:
+                    conn.close()
+
+        except Exception as e:
+            print(f"ERROR: Unhandled exception in do_POST: {e}\n{traceback.format_exc()}")
+            self._send_response(500, {"error": "An unexpected server error occurred."})
+            
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._send_cors_headers()
+        self.end_headers()
+        
+    def _send_response(self, status_code, body):
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json; charset=utf-8')
+        self._send_cors_headers()
+        self.end_headers()
+        self.wfile.write(json.dumps(body, ensure_ascii=False).encode('utf-8'))
+
+    def _send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
