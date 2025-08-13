@@ -24,7 +24,7 @@ import traceback
 # --- Configuration ---
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
 LINE_TOKEN = os.environ.get('LINE_TOKEN')
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://test-bb-six.vercel.app') # IMPORTANT: Set this in your environment
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Set this in your environment
 KV_URL = os.environ.get('KV_URL')
 
 # --- Constants & Globals ---
@@ -43,7 +43,6 @@ def get_db_connection():
         return None
 
 def get_user_profile(line_user_id):
-    """Efficiently retrieves a user's internal UUID from cache or DB."""
     cache_key = f"user_profile:{line_user_id}"
     if redis_client:
         try:
@@ -62,7 +61,7 @@ def get_user_profile(line_user_id):
             result = cur.fetchone()
 
     if not result:
-        return None # Return None if user not found, will be handled by the caller
+        return None
 
     profile_data = {"user_uuid": str(result[0])}
     if redis_client:
@@ -88,6 +87,9 @@ def send_line_message(user_id, messages):
         print(f"❌ LINE API Error: {e}")
 
 def create_flex_report(report_data):
+    """
+    REFINED: Creates a LINE Flex Message with bilingual labels and fixes the subtype bug.
+    """
     blood_type = report_data.get('bloodType', 'unknown').lower()
     color_themes = {
         'redcell': {'main': '#B91C1C', 'light': '#FEF2F2'},
@@ -97,35 +99,48 @@ def create_flex_report(report_data):
     }
     theme = color_themes.get(blood_type, color_themes['unknown'])
 
-    def create_row(label, value, is_bold=False):
-        return {"type": "box", "layout": "horizontal", "contents": [
-                {"type": "text", "text": label, "size": "sm", "color": "#555555", "flex": 1},
-                {"type": "text", "text": str(value) if value else "-", "size": "sm", "color": "#111111", "align": "end", "weight": "bold" if is_bold else "regular", "flex": 2, "wrap": True}
-            ]}
-
-    return { "type": "flex", "altText": f"ยืนยันคำขอใช้เลือด: {report_data.get('request_id')}", "contents": { "type": "bubble",
+    def create_bilingual_row(label_th, label_en, value, is_bold=False):
+        return {
+            "type": "box", "layout": "horizontal", "margin": "md", "contents": [
+                { "type": "box", "layout": "vertical", "flex": 1, "contents": [
+                    { "type": "text", "text": label_th, "size": "sm", "color": "#555555" },
+                    { "type": "text", "text": label_en, "size": "xxs", "color": "#999999" }
+                ]},
+                { "type": "text", "text": str(value) if value else "-", "size": "sm", "color": "#111111", "align": "end", "weight": "bold" if is_bold else "regular", "flex": 2, "wrap": True }
+            ]
+        }
+        
+    return {
+        "type": "flex", "altText": f"ยืนยันคำขอใช้เลือด: {report_data.get('request_id')}",
+        "contents": { "type": "bubble",
             "header": {"type": "box", "layout": "vertical", "paddingAll": "20px", "backgroundColor": theme['main'], "contents": [
-                {"type": "text", "text": "✅ ยืนยันข้อมูลสำเร็จ", "color": "#FFFFFF", "size": "lg", "weight": "bold"},
-                {"type": "text", "text": "Request Confirmed", "color": "#FFFFFFDD", "size": "xs"}
+                {"type": "box", "layout": "vertical", "contents": [
+                    {"type": "text", "text": "✅ ยืนยันข้อมูลสำเร็จ", "color": "#FFFFFF", "size": "lg", "weight": "bold"},
+                    {"type": "text", "text": "Request Confirmed", "color": "#FFFFFFDD", "size": "xs"}
+                ]}
             ]},
             "body": {"type": "box", "layout": "vertical", "spacing": "md", "backgroundColor": theme['light'], "paddingAll": "20px", "contents": [
-                {"type": "text", "text": "ข้อมูลคำขอใช้เลือด", "weight": "bold", "size": "xl", "margin": "md", "color": theme['main']},
+                {"type": "box", "layout": "vertical", "margin": "md", "contents": [
+                    {"type": "text", "text": "ข้อมูลคำขอใช้เลือด", "weight": "bold", "size": "xl", "color": theme['main']},
+                    {"type": "text", "text": "Blood Request Information", "size": "xs", "color": theme['main'] + "B3"}
+                ]},
                 {"type": "separator", "margin": "lg"},
-                create_row("Request ID:", report_data.get('request_id'), is_bold=True),
-                create_row("ผู้ป่วย (Patient):", f"{report_data.get('patientName')} (HN: {report_data.get('hn')})"),
-                create_row("หอผู้ป่วย (Ward):", report_data.get('wardName')),
+                create_bilingual_row("Request ID", "Request ID", report_data.get('request_id'), is_bold=True),
+                create_bilingual_row("ผู้ป่วย", "Patient", f"{report_data.get('patientName')} (HN: {report_data.get('hn')})"),
+                create_bilingual_row("หอผู้ป่วย", "Ward", report_data.get('wardName')),
                 {"type": "separator", "margin": "lg"},
-                create_row("ผลิตภัณฑ์ (Product):", report_data.get('bloodType', '').upper(), is_bold=True),
-                create_row("ชนิดย่อย (Subtype):", report_data.get('subtype')),
-                create_row("จำนวน (Quantity):", f"{report_data.get('quantity')} Units"),
+                create_bilingual_row("ผลิตภัณฑ์", "Product", report_data.get('bloodType', '').upper(), is_bold=True),
+                create_bilingual_row("ชนิดย่อย", "Subtype", report_data.get('subtype', '-')), # FIX: Use .get() with a default to prevent errors
+                create_bilingual_row("จำนวน", "Quantity", f"{report_data.get('quantity')} Units"),
                 {"type": "separator", "margin": "lg"},
-                create_row("รอบส่ง (Schedule):", report_data.get('deliveryTime')),
-                create_row("สถานที่ (Location):", report_data.get('deliveryLocation')),
-                create_row("ผู้แจ้ง (Reporter):", report_data.get('reporterName')),
+                create_bilingual_row("รอบส่ง", "Schedule", report_data.get('deliveryTime')),
+                create_bilingual_row("สถานที่", "Location", report_data.get('deliveryLocation')),
+                create_bilingual_row("ผู้แจ้ง", "Reporter", report_data.get('reporterName')),
                 {"type": "separator", "margin": "lg"},
                 {"type": "text", "text": f"บันทึกเมื่อ: {datetime.now(THAILAND_TZ).strftime('%d %b %Y, %H:%M')}", "wrap": True, "size": "xxs", "color": "#AAAAAA", "align": "center"}
             ]}
-        }}
+        }
+    }
 
 def send_form_link(user_id):
     form_url = f"{FORM_BASE_URL}/confirm_usage.html?line_user_id={urllib.parse.quote(user_id)}"
@@ -195,7 +210,6 @@ class handler(BaseHTTPRequestHandler):
             with get_db_connection() as conn:
                 if not conn: raise ConnectionError("Database connection failed")
                 with conn.cursor() as cur:
-                    # --- FIX: JUST-IN-TIME USER CREATION ---
                     if not user_profile:
                         print(f"INFO: User {line_user_id} not found. Creating new user record.")
                         cur.execute(
@@ -204,11 +218,9 @@ class handler(BaseHTTPRequestHandler):
                         )
                         new_user_uuid = str(cur.fetchone()[0])
                         user_profile = {'user_uuid': new_user_uuid}
-                        # Cache the newly created user profile
                         if redis_client:
                              redis_client.set(f"user_profile:{line_user_id}", json.dumps(user_profile), ex=86400)
-                    # --- END FIX ---
-
+                    
                     selected_ward_name = form_data.get('wardName')
                     if not selected_ward_name: raise ValueError("Ward Name from form is required")
                     
