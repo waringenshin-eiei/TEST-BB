@@ -1,4 +1,10 @@
-# api/webhook.py - High-Performance Webhook with Redis Caching and Decoupled Submission
+# api/webhook.py - Final Production-Ready Webhook
+# Architecture: High-speed, decoupled, with Redis caching and SSE for real-time updates.
+
+# --- Required Libraries ---
+# You will need to install: requests, psycopg[binary], redis
+# pip install requests psycopg[binary] redis
+
 from http.server import BaseHTTPRequestHandler
 import json
 from datetime import datetime, timezone, timedelta
@@ -12,28 +18,42 @@ import queue
 import time
 
 # --- Configuration ---
+# Load all credentials and settings from environment variables for security.
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
-LINE_TOKEN = os.environ.get('LINE_TOKEN', '')
+LINE_TOKEN = os.environ.get('LINE_TOKEN')
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Change this to your frontend URL
+
 # Vercel KV (Redis) Credentials
 KV_URL = os.environ.get('KV_URL')
-# Your LIFF/Form URL
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://test-bb-six.vercel.app')
 
-
+# --- Constants & Globals ---
 THAILAND_TZ = timezone(timedelta(hours=7))
 
-# --- Global Connections & Queues ---
-# Use a global Redis client for caching
-redis_client = Redis.from_url(KV_URL, decode_responses=True) if KV_URL else None
+# Initialize Redis client if configured. The app will work without it, but slower.
+redis_client = None
+if KV_URL:
+    try:
+        redis_client = Redis.from_url(KV_URL, decode_responses=True)
+        print("✅ Redis client connected.")
+    except Exception as e:
+        print(f"⚠️ Could not connect to Redis: {e}. Caching will be disabled.")
+else:
+    print("⚠️ KV_URL not set. Caching will be disabled.")
 
+
+# In-memory queue for Server-Sent Events (SSE).
+# A more robust solution for multi-server setups would use Redis Pub/Sub.
 sse_clients = []
 sse_queue = queue.Queue()
 
-# --- Database & Cache Functions ---
+# --- Core Logic: Database & Cache ---
+
 def get_db_connection():
-    if not POSTGRES_URL: return None
+    """Establishes a connection to the PostgreSQL database."""
+    if not POSTGRES_URL:
+        print("❌ POSTGRES_URL is not configured.")
+        return None
     try:
-        # Using a context manager is better for serverless functions
         return psycopg.connect(POSTGRES_URL, autocommit=True)
     except psycopg.OperationalError as e:
         print(f"❌ Database connection failed: {e}")
@@ -41,12 +61,14 @@ def get_db_connection():
 
 def get_user_profile(line_user_id):
     """
-    Gets user profile (internal UUID, ward info) first from Redis cache,
-    then falls back to PostgreSQL.
+    Efficiently retrieves a user's profile.
+    1. Tries to fetch from Redis cache.
+    2. If not in cache, queries PostgreSQL.
+    3. Stores the result back into the cache for future requests.
     """
     cache_key = f"user_profile:{line_user_id}"
 
-    # 1. Try to get from Redis cache
+    # 1. Try Redis Cache first
     if redis_client:
         try:
             cached_profile = redis_client.get(cache_key)
@@ -56,18 +78,18 @@ def get_user_profile(line_user_id):
         except Exception as e:
             print(f"⚠️ Redis GET error: {e}")
 
+    # 2. Cache Miss or Redis Error: Fallback to PostgreSQL
     print(f"CACHE MISS for user {line_user_id}. Querying PostgreSQL.")
-    
-    # 2. If not in cache, query PostgreSQL
     with get_db_connection() as conn:
         if not conn: return None
         with conn.cursor() as cur:
+            # This query joins all necessary tables to build a complete profile
             cur.execute("""
                 SELECT
-                    u.user_id, -- The internal UUID
-                    wd.ward_id,
-                    wd.ward_name,
-                    up.reporter_name
+                    u.user_id,         -- The internal UUID
+                    wd.ward_id,        -- The ward's integer ID
+                    wd.ward_name,      -- The ward's display name
+                    up.reporter_name   -- The user's registered name
                 FROM users u
                 LEFT JOIN user_profiles up ON u.user_id = up.user_id
                 LEFT JOIN ward_directory wd ON up.primary_ward_id = wd.ward_id
@@ -86,30 +108,99 @@ def get_user_profile(line_user_id):
         "reporter_name": result[3]
     }
 
-    # 3. Store the result back in Redis with an expiration (e.g., 24 hours)
+    # 3. Store result in Redis for next time (expires in 24 hours)
     if redis_client:
         try:
-            redis_client.set(cache_key, json.dumps(profile_data), ex=86400) # Cache for 1 day
+            redis_client.set(cache_key, json.dumps(profile_data), ex=86400)
             print(f"CACHE SET for user {line_user_id}")
         except Exception as e:
             print(f"⚠️ Redis SET error: {e}")
             
     return profile_data
 
-# (notify_dashboard_update and other SSE functions remain the same)
+
+# --- Core Logic: LINE Messaging ---
+
+def send_line_message(user_id, messages):
+    """Generic function to push a message to a user via the LINE API."""
+    if not LINE_TOKEN: return
+    try:
+        requests.post(
+            'https://api.line.me/v2/bot/message/push',
+            headers={'Authorization': f'Bearer {LINE_TOKEN}', 'Content-Type': 'application/json'},
+            json={"to": user_id, "messages": messages if isinstance(messages, list) else [messages]},
+            timeout=5
+        )
+        print(f"✅ LINE message sent to {user_id}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ LINE API Error: {e}")
+
+def send_combined_form_link(user_id):
+    """Sends a single, direct-to-form message. This is the primary instant response."""
+    form_url = f"{FORM_BASE_URL}/confirm_usage.html?line_user_id={urllib.parse.quote(user_id)}"
+    
+    message = {
+        "type": "template",
+        "altText": "แจ้งเตือนการใช้เลือด",
+        "template": {
+            "type": "buttons",
+            "thumbnailImageUrl": "https://storage.googleapis.com/line-flex-images-logriz/blood-request-banner.png",
+            "imageAspectRatio": "rectangle",
+            "imageSize": "cover",
+            "title": "🩸 ระบบแจ้งใช้เลือด",
+            "text": "สวัสดี, กดปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งใช้เลือดได้ทันที",
+            "actions": [{"type": "uri", "label": "📋 เปิดฟอร์ม", "uri": form_url}]
+        }
+    }
+    send_line_message(user_id, message)
+
+def send_confirmation_message(user_id, request_id):
+    """Sends a confirmation to the user AFTER a successful form submission."""
+    text = f"✅ ได้รับข้อมูลของท่านเรียบร้อยแล้ว\n\nหมายเลขคำขอของท่านคือ:\n{request_id}\n\nเจ้าหน้าที่จะดำเนินการตรวจสอบโดยเร็วที่สุด"
+    send_line_message(user_id, {"type": "text", "text": text})
+
+
+# --- Core Logic: Server-Sent Events (SSE) for Dashboard ---
+
 def notify_dashboard_update(event_type, data):
+    """Puts a new event onto the queue for the SSE worker to send."""
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
         sse_queue.put_nowait(json.dumps(event_data))
-        print(f"📡 Dashboard notification sent: {event_type}")
+        print(f"📡 SSE event queued: {event_type}")
     except queue.Full:
-        print("⚠️ SSE queue is full, dropping notification")
+        print("⚠️ SSE queue is full, dropping event")
 
-# --- Main HTTP Handler ---
+def sse_worker():
+    """
+    A background thread that continuously sends queued messages
+    to all connected dashboard clients.
+    """
+    while True:
+        try:
+            message = sse_queue.get() # This blocks until a message is available
+            for client_queue in sse_clients[:]:
+                try:
+                    client_queue.put_nowait(message)
+                except queue.Full:
+                    # This client is not processing messages, assume disconnected
+                    sse_clients.remove(client_queue)
+        except Exception as e:
+            print(f"SSE worker error: {e}")
+            time.sleep(1) # Prevent rapid-fire errors
+
+# Start the single SSE worker thread when the serverless function initializes.
+sse_thread = threading.Thread(target=sse_worker, daemon=True)
+if not sse_thread.is_alive():
+    sse_thread.start()
+
+
+# --- Main HTTP Request Handler ---
+
 class handler(BaseHTTPRequestHandler):
 
+    # --- POST Request Router ---
     def do_POST(self):
-        """Routes POST requests to the correct handler based on the path."""
         if self.path == '/api/webhook':
             self.handle_line_webhook()
         elif self.path == '/api/submit_request':
@@ -117,108 +208,87 @@ class handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Endpoint not found")
 
+    # --- GET Request Router ---
+    def do_GET(self):
+        if self.path == '/api/sse-updates':
+            self.handle_sse_connection()
+        elif self.path == '/api/webhook':
+            # A simple health check for the webhook URL
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            response = {"status": "ok", "sse_clients": len(sse_clients)}
+            self.wfile.write(json.dumps(response).encode('utf-8'))
+        else:
+            self.send_error(404, "Endpoint not found")
+
+    # --- Endpoint Handler 1: The Fast LINE Webhook ---
     def handle_line_webhook(self):
-        """
-        Handles incoming events from LINE. This is optimized for speed.
-        It does NOT connect to the database.
-        """
         try:
             content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
-            webhook_data = json.loads(post_data.decode('utf-8'))
+            body = json.loads(self.rfile.read(content_length))
             
-            for event in webhook_data.get('events', []):
-                self.process_line_event(event)
+            for event in body.get('events', []):
+                user_id = event.get('source', {}).get('userId')
+                event_type = event.get('type')
+                if not user_id: continue
+
+                print(f"⚡ Webhook received '{event_type}' from {user_id}")
+                if event_type in ['message', 'follow']:
+                    send_combined_form_link(user_id)
         except Exception as e:
             print(f"❌ Unhandled Error in Webhook: {e}")
         finally:
-            # Always respond quickly to the LINE Platform
+            # CRITICAL: Always respond 200 OK immediately to the LINE Platform.
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b'OK')
-            
-    def process_line_event(self, event):
-        """Processes a single event from LINE without blocking."""
-        user_id = event.get('source', {}).get('userId')
-        if not user_id: return
 
-        event_type = event.get('type')
-        print(f"⚡ Processing event '{event_type}' for user {user_id}")
-        
-        # Note: We are no longer calling handle_user_event here to keep the webhook fast.
-        # User activity can be updated during form submission instead.
-        
-        if event_type == 'message' or event_type == 'follow':
-            send_blood_usage_menu_fast(user_id)
-        elif event_type == 'postback':
-            postback_data = event.get('postback', {}).get('data', '')
-            if postback_data == 'START_BLOOD_REQUEST':
-                send_blood_form_link_fast(user_id)
-    
+    # --- Endpoint Handler 2: The Form Submission Worker ---
     def handle_form_submission(self):
-        """
-        Handles form data submitted from the web front-end.
-        This is where database operations now occur.
-        """
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             form_data = json.loads(self.rfile.read(content_length))
             line_user_id = form_data.get('line_user_id')
 
             if not line_user_id:
-                self.send_response(400)
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "error", "message": "line_user_id is required"}).encode())
-                return
+                raise ValueError("line_user_id is required in form submission")
 
-            # Get user profile from cache or DB
+            # Get user profile (from cache or DB)
             user_profile = get_user_profile(line_user_id)
             if not user_profile:
-                # This could happen if a user is not registered. We can create them on-the-fly.
-                # For now, we'll error out.
-                raise ValueError("User profile not found.")
+                raise ValueError(f"User profile not found for line_user_id {line_user_id}")
 
-            # Insert into database
+            # Write the new request to the database
             with get_db_connection() as conn:
+                if not conn: raise ConnectionError("Database connection failed during submission")
                 with conn.cursor() as cur:
-                    # The database will generate the UUID for request_id
                     cur.execute("""
                         INSERT INTO blood_requests 
-                        (user_id, ward_id, schedule_id, blood_type, patient_name, hospital_number, blood_details, delivery_location, reporter_name, status, request_data)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (user_id, ward_id, schedule_id, status, request_data)
+                        VALUES (%s, %s, %s, 'pending', %s)
                         RETURNING request_id, created_at;
                     """, (
                         user_profile['user_uuid'],
                         user_profile['ward_id'],
-                        form_data.get('schedule_id'), # Assuming form sends this ID
-                        form_data.get('blood_type'),
-                        form_data.get('patient_name'),
-                        form_data.get('hospital_number'),
-                        json.dumps(form_data.get('blood_components')), # Storing components here for simplicity
-                        form_data.get('delivery_location'),
-                        user_profile.get('reporter_name'),
-                        'pending', # New status, changed from 'submitted'
+                        form_data.get('schedule_id'), # Assuming form sends the integer ID
                         json.dumps(form_data)
                     ))
                     result = cur.fetchone()
-                    new_request_id = str(result[0])
-                    created_at_ts = result[1]
+                    new_request_id, created_at_ts = str(result[0]), result[1]
 
-            print(f"✅ New request {new_request_id} saved to database.")
+            print(f"✅ Request {new_request_id} saved to database.")
             
-            # Notify dashboard via SSE
+            # Trigger notifications (these are non-blocking)
             notify_dashboard_update('new_request', {
                 'request_id': new_request_id,
                 'status': 'pending',
                 'ward_name': user_profile.get('ward_name', 'Unknown'),
-                'patient_name': form_data.get('patient_name'),
                 'created_at': created_at_ts.isoformat()
             })
-
-            # Send confirmation message back to the user
             send_confirmation_message(line_user_id, new_request_id)
             
-            # Respond to the form submission
+            # Send success response back to the web form
             self.send_response(200)
             self.send_header('Content-type','application/json')
             self.end_headers()
@@ -226,139 +296,43 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             print(f"❌ Form submission error: {e}")
-            self.send_error(500, f"Internal Server Error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "error", "message": str(e)}).encode())
 
-    # (do_GET, handle_sse, sse_worker, and other SSE functions remain the same)
-    def do_GET(self):
-        # ... (keep existing GET handler logic)
-        pass
-    def handle_sse(self):
-        # ... (keep existing SSE handler logic)
-        pass
-    def send_sse_message(self, data):
-        # ... (keep existing SSE send logic)
-        pass
-# (sse_worker thread also remains the same)
+    # --- Endpoint Handler 3: SSE Connection for Dashboard ---
+    def handle_sse_connection(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-cache')
+        self.send_header('Connection', 'keep-alive')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
 
-# --- NEW High-Speed LINE Messaging Functions ---
-def send_blood_usage_menu_fast(user_id):
-    """Sends the main menu INSTANTLY without a database query."""
-    message = {
-        "type": "template", "altText": "แจ้งเตือนการใช้เลือด",
-        "template": {
-            "type": "buttons", "title": "🩸 ระบบแจ้งใช้เลือด",
-            "text": "สวัสดี, กรุณาเลือกเมนูเพื่อดำเนินการต่อ", # Generic greeting
-            "actions": [{"type": "postback", "label": "🚨 แจ้งใช้เลือด", "data": "START_BLOOD_REQUEST"}]
-        }
-    }
-    send_line_message(user_id, message)
+        client_queue = queue.Queue()
+        sse_clients.append(client_queue)
+        print(f"➕ SSE client connected. Total clients: {len(sse_clients)}")
 
-def send_blood_form_link_fast(user_id):
-    """
-    Sends a link to the web form INSTANTLY.
-    The form does not have a request_id yet, but passes the user's ID.
-    """
-    # The form will get the line_user_id and include it in the submission
-    form_url = f"{FORM_BASE_URL}/confirm_usage.html?line_user_id={urllib.parse.quote(user_id)}"
-    
-    message = {
-        "type": "template", "altText": "กรุณากรอกข้อมูลการใช้เลือด",
-        "template": {
-            "type": "buttons", "title": "📝 กรอกข้อมูล",
-            "text": "กรุณากดปุ่มด้านล่างเพื่อกรอกรายละเอียดการใช้เลือด",
-            "actions": [{"type": "uri", "label": "📋 เปิดฟอร์ม", "uri": form_url}]
-        }
-    }
-    send_line_message(user_id, message)
+        try:
+            # Send an initial connection confirmation
+            self.wfile.write(f"data: {json.dumps({'type': 'connected'})}\n\n".encode())
+            self.wfile.flush()
 
-def send_confirmation_message(user_id, request_id):
-    """Sends a confirmation to the user after a successful form submission."""
-    text = f"✅ ได้รับข้อมูลของท่านเรียบร้อยแล้ว\n\nหมายเลขคำขอของท่านคือ:\n{request_id}\n\nเจ้าหน้าที่จะดำเนินการตรวจสอบโดยเร็วที่สุด"
-    send_line_message(user_id, {"type": "text", "text": text})
-
-# --- LINE Messaging Functions ---
-def send_line_message(user_id, messages):
-    if not LINE_TOKEN: return False
-    try:
-        response = requests.post(
-            'https://api.line.me/v2/bot/message/push',
-            headers={'Authorization': f'Bearer {LINE_TOKEN}'},
-            json={"to": user_id, "messages": messages if isinstance(messages, list) else [messages]},
-            timeout=10
-        )
-        response.raise_for_status()
-        print(f"✅ Message sent to {user_id}")
-        return True
-    except requests.exceptions.RequestException as e:
-        print(f"❌ LINE API Error: {e.response.status_code if e.response else 'N/A'} - {e.response.text if e.response else e}")
-        return False
-
-def send_blood_usage_menu(user_id):
-    """Sends the main menu to start a blood request."""
-    user_name = get_user_name(user_id)
-    greeting = f"สวัสดีคุณ {user_name}" if user_name else "สวัสดี"
-    
-    message = {
-        "type": "template", "altText": "แจ้งเตือนการใช้เลือด",
-        "template": {
-            "type": "buttons", "title": "🩸 ระบบแจ้งใช้เลือด",
-            "text": f"{greeting}, กรุณาเลือกเมนูเพื่อดำเนินการต่อ",
-            "actions": [{
-                "type": "postback", "label": "🚨 แจ้งใช้เลือด", "data": "START_BLOOD_REQUEST"
-            }]
-        }
-    }
-    send_line_message(user_id, message)
-
-def send_blood_form_link(user_id, request_id):
-    """Sends a message with a button linking to the web form."""
-    form_url = f"https://test-bb-six.vercel.app/confirm_usage.html?request_id={urllib.parse.quote(request_id)}"
-    
-    message = {
-        "type": "template", "altText": "กรุณากรอกข้อมูลการใช้เลือด",
-        "template": {
-            "type": "buttons", "title": "📝 กรอกข้อมูล",
-            "text": f"กรุณากดปุ่มด้านล่างเพื่อกรอกรายละเอียดสำหรับคำขอ: {request_id}",
-            "actions": [{
-                "type": "uri", "label": "📋 เปิดฟอร์ม", "uri": form_url
-            }]
-        }
-    }
-    send_line_message(user_id, message)
-
-def send_welcome_message(user_id):
-    """Sends a welcome message to new followers."""
-    text = "ยินดีต้อนรับสู่ระบบแจ้งใช้เลือด! 🩸\n\nพิมพ์ข้อความใดๆ เพื่อเริ่มต้นใช้งาน"
-    send_line_message(user_id, {"type": "text", "text": text})
-
-# --- Utility Functions for Dashboard Integration ---
-def send_status_update_notification(request_id, old_status, new_status):
-    """Send notification when request status changes."""
-    request_details = get_request_details(request_id)
-    if request_details:
-        notify_dashboard_update('status_update', {
-            'request_id': request_id,
-            'old_status': old_status,
-            'new_status': new_status,
-            'patient_name': request_details.get('patient_name'),
-            'ward_name': request_details.get('ward_name'),
-            'message': f'Status changed: {old_status} → {new_status}'
-        })
-
-def send_bulk_update_notification(message):
-    """Send bulk update notification (e.g., system maintenance)."""
-    notify_dashboard_update('system_update', {
-        'message': message,
-        'severity': 'info'
-    })
-
-# Health check function
-def get_system_health():
-    """Get system health status for monitoring."""
-    db_conn = get_db_connection()
-    return {
-        'database': 'connected' if db_conn else 'disconnected',
-        'line_token': 'configured' if LINE_TOKEN else 'missing',
-        'sse_clients': len(sse_clients),
-        'timestamp': datetime.now(THAILAND_TZ).isoformat()
-    }
+            while True:
+                try:
+                    # Wait for a message from the worker, with a timeout for heartbeats
+                    message = client_queue.get(timeout=25)
+                    self.wfile.write(f"data: {message}\n\n".encode())
+                    self.wfile.flush()
+                except queue.Empty:
+                    # Send a heartbeat to keep the connection open
+                    self.wfile.write(f"data: {json.dumps({'type': 'heartbeat'})}\n\n".encode())
+                    self.wfile.flush()
+        except (IOError, BrokenPipeError, ConnectionResetError) as e:
+             # This is expected when a client closes their browser
+            print(f"SSE client disconnected: {e}")
+        finally:
+            if client_queue in sse_clients:
+                sse_clients.remove(client_queue)
+            print(f"➖ SSE client removed. Total clients: {len(sse_clients)}")
