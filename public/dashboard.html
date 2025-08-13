@@ -80,8 +80,8 @@
                 </div>
                 <div class="text-right">
                     <div class="flex items-center mb-2">
-                        <div id="connection-status" class="status-indicator offline"></div>
-                        <span id="connection-text" class="text-sm text-gray-500">กำลังเชื่อมต่อ...</span>
+                        <div id="connection-status" class="status-indicator online"></div>
+                        <span id="connection-text" class="text-sm text-gray-500">เชื่อมต่อแล้ว (Auto-refresh)</span>
                     </div>
                     <p class="text-xs text-gray-400">อัพเดทล่าสุด: <span id="last-update">-</span></p>
                 </div>
@@ -207,9 +207,8 @@
         
         function initializeApp() {
             setupEventListeners();
-            setupAutoRefresh();
-            setupServerSentEvents();
-            loadInitialData();
+            setupServerSentEvents(); // Try SSE first
+            loadInitialData(); // Load initial data once
         }
 
         function setupEventListeners() {
@@ -225,48 +224,74 @@
             });
             document.getElementById('auto-refresh-toggle').addEventListener('change', (e) => {
                 isAutoRefreshEnabled = e.target.checked;
-                if (isAutoRefreshEnabled) {
-                    setupAutoRefresh();
-                } else {
+                if (isAutoRefreshEnabled && (!eventSource || eventSource.readyState !== EventSource.OPEN)) {
+                    setupAutoRefresh(); // Only setup if SSE is not connected
+                } else if (!isAutoRefreshEnabled) {
                     clearInterval(refreshInterval);
                 }
             });
         }
 
         function setupAutoRefresh() {
+            // Only setup auto-refresh if SSE is not connected
             if (refreshInterval) clearInterval(refreshInterval);
-            refreshInterval = setInterval(() => {
-                if (isAutoRefreshEnabled) {
-                    loadInitialData();
-                }
-            }, 30000); // Refresh every 30 seconds
+            
+            if (!eventSource || eventSource.readyState !== EventSource.OPEN) {
+                refreshInterval = setInterval(() => {
+                    if (isAutoRefreshEnabled && (!eventSource || eventSource.readyState !== EventSource.OPEN)) {
+                        loadInitialData();
+                    }
+                }, 30000); // Refresh every 30 seconds only if SSE is not working
+            }
         }
 
         function setupServerSentEvents() {
-            // Try to establish SSE connection for real-time updates
-            try {
-                eventSource = new EventSource('/api/sse-updates');
-                
-                eventSource.onopen = () => {
-                    updateConnectionStatus(true);
-                };
+            // Check if SSE endpoint exists first
+            fetch('/api/sse-updates', { method: 'HEAD' })
+                .then(response => {
+                    if (response.ok) {
+                        // SSE endpoint exists, try to establish connection
+                        try {
+                            eventSource = new EventSource('/api/sse-updates');
+                            
+                            eventSource.onopen = () => {
+                                updateConnectionStatus(true);
+                                // Stop auto-refresh when SSE is connected
+                                if (refreshInterval) {
+                                    clearInterval(refreshInterval);
+                                    refreshInterval = null;
+                                }
+                                console.log('✅ SSE connected - Auto-refresh disabled');
+                            };
 
-                eventSource.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-                    handleRealTimeUpdate(data);
-                };
+                            eventSource.onmessage = (event) => {
+                                const data = JSON.parse(event.data);
+                                handleRealTimeUpdate(data);
+                            };
 
-                eventSource.onerror = () => {
+                            eventSource.onerror = () => {
+                                console.log('❌ SSE connection failed - Falling back to auto-refresh');
+                                updateConnectionStatus(false);
+                                setupAutoRefresh();
+                            };
+                        } catch (error) {
+                            console.log('SSE connection failed:', error);
+                            updateConnectionStatus(false);
+                            setupAutoRefresh();
+                        }
+                    } else {
+                        // SSE endpoint doesn't exist, use polling mode
+                        console.log('SSE endpoint not available, using polling mode');
+                        updateConnectionStatus(false);
+                        setupAutoRefresh();
+                    }
+                })
+                .catch(() => {
+                    // Network error or endpoint doesn't exist
+                    console.log('SSE endpoint not found, using polling mode');
                     updateConnectionStatus(false);
-                    // Fallback to polling if SSE fails
                     setupAutoRefresh();
-                };
-            } catch (error) {
-                console.log('SSE not supported, using polling');
-                updateConnectionStatus(false);
-                setupAutoRefresh();
-            }
-        }
+                });
 
         function updateConnectionStatus(isOnline) {
             const statusIndicator = document.getElementById('connection-status');
@@ -277,7 +302,7 @@
                 connectionText.textContent = 'เชื่อมต่อแล้ว (Real-time)';
             } else {
                 statusIndicator.className = 'status-indicator offline';
-                connectionText.textContent = 'ออฟไลน์ (Auto-refresh)';
+                connectionText.textContent = 'เชื่อมต่อแล้ว (Auto-refresh)';
             }
         }
 
