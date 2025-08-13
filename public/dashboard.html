@@ -210,46 +210,98 @@
         let isAutoRefreshEnabled = true;
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 DOM loaded, setting up password protection...');
+            
+            // For debugging - add bypass option
+            if (window.location.hash === '#bypass') {
+                console.log('🔓 Bypass mode activated');
+                document.getElementById('password-protection').style.display = 'none';
+                initializeApp();
+                return;
+            }
+            
             setupPasswordProtection();
         });
 
         function setupPasswordProtection() {
+            console.log('🔐 Setting up password protection...');
+            
             const protectionDiv = document.getElementById('password-protection');
             const passwordInput = document.getElementById('password-input');
             const passwordForm = document.getElementById('password-form');
             const submitButton = document.getElementById('password-submit');
             const errorP = document.getElementById('password-error');
             
+            console.log('🔐 Elements found:', {
+                protectionDiv: !!protectionDiv,
+                passwordInput: !!passwordInput,
+                passwordForm: !!passwordForm,
+                submitButton: !!submitButton,
+                errorP: !!errorP
+            });
+            
+            if (!protectionDiv || !passwordInput || !passwordForm || !submitButton || !errorP) {
+                console.error('❌ Missing password protection elements!');
+                return;
+            }
+            
             // Focus on password input
             setTimeout(() => {
                 passwordInput.focus();
+                console.log('🔐 Password input focused');
             }, 100);
             
             const CORRECT_PASSWORD = "FLUKEE1112";
 
             const checkPassword = (e) => {
+                console.log('🔐 checkPassword function called, event:', e?.type);
+                
                 if (e) {
                     e.preventDefault(); // Prevent form submission
+                    console.log('🔐 Event prevented');
                 }
                 
                 const enteredPassword = passwordInput.value.trim();
-                console.log('🔐 Password check triggered');
-                console.log('Entered:', enteredPassword);
-                console.log('Expected:', CORRECT_PASSWORD);
+                console.log('🔐 Password check:');
+                console.log('  - Entered:', `"${enteredPassword}"`);
+                console.log('  - Expected:', `"${CORRECT_PASSWORD}"`);
+                console.log('  - Length entered:', enteredPassword.length);
+                console.log('  - Length expected:', CORRECT_PASSWORD.length);
+                console.log('  - Match:', enteredPassword === CORRECT_PASSWORD);
                 
                 if (enteredPassword === CORRECT_PASSWORD) {
-                    console.log('✅ Password correct - logging in');
+                    console.log('✅ Password correct - starting login process');
                     errorP.innerText = 'เข้าสู่ระบบสำเร็จ...';
                     errorP.className = 'text-green-500 mt-3 min-h-[1.5rem] text-sm';
                     
-                    // Hide protection with animation
-                    protectionDiv.style.opacity = '0';
-                    protectionDiv.style.transition = 'opacity 0.3s ease-out';
+                    console.log('✅ Starting fade out...');
                     
-                    setTimeout(() => {
+                    // Try different approaches to hide the protection div
+                    try {
+                        // Method 1: Direct hiding
+                        protectionDiv.style.opacity = '0';
+                        protectionDiv.style.transition = 'opacity 0.3s ease-out';
+                        
+                        setTimeout(() => {
+                            console.log('✅ Hiding protection div and initializing app');
+                            protectionDiv.style.display = 'none';
+                            
+                            // Initialize app
+                            try {
+                                initializeApp();
+                                console.log('✅ App initialized successfully');
+                            } catch (error) {
+                                console.error('❌ Error initializing app:', error);
+                            }
+                        }, 300);
+                        
+                    } catch (error) {
+                        console.error('❌ Error during login process:', error);
+                        // Fallback: direct hide
                         protectionDiv.style.display = 'none';
                         initializeApp();
-                    }, 300);
+                    }
+                    
                 } else {
                     console.log('❌ Password incorrect');
                     errorP.innerText = enteredPassword ? 
@@ -268,17 +320,32 @@
             };
             
             // Handle form submission (Enter key)
-            passwordForm.addEventListener('submit', checkPassword);
+            if (passwordForm) {
+                passwordForm.addEventListener('submit', (e) => {
+                    console.log('🔐 Form submit event triggered');
+                    checkPassword(e);
+                });
+                console.log('🔐 Form submit listener added');
+            }
             
             // Handle button click
-            submitButton.addEventListener('click', checkPassword);
+            if (submitButton) {
+                submitButton.addEventListener('click', (e) => {
+                    console.log('🔐 Button click event triggered');
+                    checkPassword(e);
+                });
+                console.log('🔐 Button click listener added');
+            }
             
             // Clear error on input
-            passwordInput.addEventListener('input', () => {
-                errorP.innerText = '';
-            });
+            if (passwordInput) {
+                passwordInput.addEventListener('input', () => {
+                    errorP.innerText = '';
+                });
+                console.log('🔐 Input listener added');
+            }
             
-            console.log('🔐 Password protection initialized. Password:', CORRECT_PASSWORD);
+            console.log('🔐 Password protection setup complete. Expected password:', CORRECT_PASSWORD);
         }
         
         function initializeApp() {
