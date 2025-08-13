@@ -5,14 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ระบบแจ้งใช้เลือด | Blood Request System</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     fontFamily: {
                         'sarabun': ['Sarabun', 'system-ui', 'sans-serif'],
-                        'inter': ['Inter', 'system-ui', 'sans-serif']
                     },
                     colors: {
                         'medical-red': { 50:'#fef7f7', 100:'#fee2e2', 200:'#fecaca', 300:'#fca5a5', 400:'#f87171', 500:'#ef4444', 600:'#dc2626', 700:'#b91c1c', 800:'#991b1b', 900:'#7f1d1d' },
@@ -25,7 +24,7 @@
     </script>
     <style>
         body {
-            font-family: 'Sarabun', 'Inter', system-ui, sans-serif;
+            font-family: 'Sarabun', system-ui, sans-serif;
             background: #f8fafc;
             min-height: 100vh;
         }
@@ -89,34 +88,32 @@
         .btn-secondary { background: #fff; color: #4b5563; border: 2px solid #d1d5db; transition: all 0.3s ease; }
         .btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; transform: translateY(-2px); }
 
-        /* Page 1 Selection Card Styles */
-        .product-card {
+        /* Card Styles with BORDERS */
+        .product-card, .selection-card {
             border-radius: 1.5rem;
-            border: 2px solid #e5e7eb;
+            border: 2px solid #e2e8f0;
             background: #fff;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
-            overflow: hidden;
             position: relative;
         }
-        .product-card:hover {
+        .selection-card { border-radius: 1rem; }
+        .product-card:hover, .selection-card:hover {
             transform: translateY(-5px);
             border-color: var(--tw-accent-color);
             box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05);
         }
-        .product-card.selected {
+        .product-card.selected, .selection-card.selected {
             border-color: var(--tw-accent-color);
-            transform: translateY(-2px) scale(1.01);
+            transform: translateY(-2px);
             box-shadow: 0 0 0 4px var(--tw-shadow-color);
         }
-        .product-card .accent-bg {
-            position: absolute;
-            opacity: 0;
-            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .product-card.selected .accent-bg { opacity: 1; }
+        .theme-red-cells .selection-card.selected { --tw-accent-color: #dc2626; background-color: #fef2f2; }
+        .theme-plasma .selection-card.selected { --tw-accent-color: #d97706; background-color: #fffbeb; }
+        .theme-cryo .selection-card.selected { --tw-accent-color: #0284c7; background-color: #f0f9ff; }
+        
 
-        /* Autocomplete Styles (to support original user logic) */
+        /* Autocomplete Styles */
         .autocomplete-container { position: relative; }
         .autocomplete-items {
             position: absolute; top: 100%; left: 0; right: 0; z-index: 99;
@@ -125,42 +122,38 @@
             border-radius: 0 0 1rem 1rem; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
         }
         .autocomplete-items div {
-            padding: 1rem 1.25rem;
-            cursor: pointer;
-            border-bottom: 1px solid #f3f4f6;
-            transition: all 0.2s ease;
-            font-weight: 500;
+            padding: 1rem 1.25rem; cursor: pointer; border-bottom: 1px solid #f3f4f6;
+            transition: all 0.2s ease; font-weight: 500;
         }
-        .autocomplete-items div:hover {
-            background: linear-gradient(135deg, #fef2f2, #fee2e2);
-            color: #dc2626;
-        }
-        .autocomplete-active {
-            background-color: #fee2e2 !important;
-        }
+        .autocomplete-items div:hover, .autocomplete-active { background-color: #f3f4f6; }
 
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .grid-cards { grid-template-columns: 1fr; }
-            .time-cards-grid { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
-            .summary-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+        /* Summary Report Style */
+        .summary-docket {
+            background-color: #f8fafc;
+            border: 2px dashed #d1d5db;
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            margin-top: 2rem;
         }
+        .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1.5rem; }
+        .summary-label { font-weight: 600; color: #4b5563; text-align: right; }
+        .summary-value { font-weight: 500; color: #111827; }
     </style>
 </head>
 <body class="py-6 px-3 md:py-8 md:px-4">
     <div class="max-w-4xl mx-auto">
         <div id="mainContainer" class="main-container rounded-3xl p-6 md:p-10 theme-red-cells">
             <div class="text-center mb-8">
-                <h1 class="text-3xl md:text-5xl font-bold text-gray-800 mb-2 font-sarabun">ระบบแจ้งใช้เลือด</h1>
-                <h2 class="text-lg md:text-xl font-medium text-gray-500 font-inter">Blood Request System</h2>
+                <h1 class="text-3xl md:text-5xl font-bold text-gray-800 mb-2">ระบบแจ้งใช้เลือด</h1>
+                <h2 class="text-lg md:text-xl font-medium text-gray-500">Blood Request System</h2>
             </div>
             
             <div class="mb-8">
                 <div class="flex justify-between items-center mb-2">
-                    <p id="stepDescription" class="font-semibold text-gray-700 font-sarabun"></p>
+                    <p id="stepDescription" class="font-semibold text-gray-700"></p>
                     <span class="text-lg font-bold text-gray-500">
                         <span id="currentStep">1</span> / 4
                     </span>
@@ -172,44 +165,36 @@
 
             <div class="form-page active" id="page1">
                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 font-sarabun">เลือกผลิตภัณฑ์เลือด</h2>
-                    <p class="text-gray-600 font-inter mt-1">Select Blood Product</p>
+                    <h2 class="text-2xl font-bold text-gray-800">เลือกผลิตภัณฑ์เลือด</h2>
+                    <p class="text-gray-600 mt-1">Select Blood Product</p>
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <div class="product-card lg:col-span-2 p-6" data-type="redcell" style="--tw-accent-color: #ef4444; --tw-shadow-color: rgba(239, 68, 68, 0.2);">
-                        <div class="accent-bg top-0 left-0 w-full h-full bg-gradient-to-br from-medical-red-50 to-white -z-10"></div>
-                        <h3 class="text-2xl font-bold text-medical-red-600 font-sarabun">เม็ดเลือดแดงชนิดต่างๆ</h3>
-                        <p class="font-inter text-medical-red-800 font-semibold mb-3">Red Blood Cells</p>
-                        <p class="text-gray-600 font-sarabun">สำหรับผู้ป่วยที่ต้องการเพิ่มความสามารถในการขนส่งออกซิเจน เช่น PRC, LPRC, และ LDRC</p>
+                        <h3 class="text-2xl font-bold text-medical-red-600">เม็ดเลือดแดงชนิดต่างๆ (Red Blood Cells)</h3>
+                        <p class="text-gray-600 mt-2">สำหรับผู้ป่วยที่ต้องการเพิ่มความสามารถในการขนส่งออกซิเจน เช่น PRC, LPRC, และ LDRC</p>
                     </div>
 
                     <div class="product-card p-6" data-type="ffp" style="--tw-accent-color: #f59e0b; --tw-shadow-color: rgba(245, 158, 11, 0.2);">
-                        <div class="accent-bg top-0 left-0 w-full h-full bg-gradient-to-br from-medical-gold-50 to-white -z-10"></div>
-                        <h3 class="text-xl font-bold text-medical-gold-600 font-sarabun">พลาสมา</h3>
-                        <p class="font-inter text-medical-gold-800 font-semibold mb-2">Fresh Frozen Plasma (FFP)</p>
-                        <p class="text-sm text-gray-500 font-sarabun">สำหรับทดแทนปัจจัยการแข็งตัวของเลือด</p>
+                        <h3 class="text-xl font-bold text-medical-gold-600">พลาสมา (Fresh Frozen Plasma)</h3>
+                        <p class="text-sm text-gray-500 mt-1">สำหรับทดแทนปัจจัยการแข็งตัวของเลือด</p>
                     </div>
 
                     <div class="product-card p-6" data-type="cryoprecipitate" style="--tw-accent-color: #0ea5e9; --tw-shadow-color: rgba(14, 165, 233, 0.2);">
-                        <div class="accent-bg top-0 left-0 w-full h-full bg-gradient-to-br from-medical-blue-50 to-white -z-10"></div>
-                        <h3 class="text-xl font-bold text-medical-blue-600 font-sarabun">ไครโอพรีซิพเิเทต</h3>
-                        <p class="font-inter text-medical-blue-800 font-semibold mb-2">Cryoprecipitate</p>
-                        <p class="text-sm text-gray-500 font-sarabun">ส่วนประกอบที่เข้มข้นของ FFP</p>
+                        <h3 class="text-xl font-bold text-medical-blue-600">ไครโอพรีซิพเิเทต (Cryoprecipitate)</h3>
+                        <p class="text-sm text-gray-500 mt-1">ส่วนประกอบที่เข้มข้นของ FFP</p>
                     </div>
                 </div>
 
                 <div class="flex justify-end mt-8">
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage1" disabled>
-                        <span class="font-sarabun">ถัดไป</span> →
-                    </button>
+                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage1" disabled>ถัดไป →</button>
                 </div>
             </div>
 
             <div class="form-page" id="page2">
                  <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 font-sarabun">ข้อมูลผู้ป่วยและผู้แจ้ง</h2>
-                    <p class="text-gray-600 font-inter mt-1">Patient & Reporter Information</p>
+                    <h2 class="text-2xl font-bold text-gray-800">ข้อมูลผู้ป่วยและผู้แจ้ง</h2>
+                    <p class="text-gray-600 mt-1">Patient & Reporter Information</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                     <div class="floating-label mt-6">
@@ -230,43 +215,42 @@
                     </div>
                 </div>
                 <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← <span class="font-sarabun">ย้อนกลับ</span></button>
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage2" disabled><span class="font-sarabun">ถัดไป</span> →</button>
+                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
+                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage2" disabled>ถัดไป →</button>
                 </div>
             </div>
 
             <div class="form-page" id="page3">
                  <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 font-sarabun">รายละเอียดผลิตภัณฑ์</h2>
-                    <p class="text-gray-600 font-inter mt-1">Product Details</p>
+                    <h2 class="text-2xl font-bold text-gray-800">รายละเอียดผลิตภัณฑ์</h2>
+                    <p class="text-gray-600 mt-1">Product Details</p>
                 </div>
                 <div id="typeSpecificContent"></div>
                 <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← <span class="font-sarabun">ย้อนกลับ</span></button>
-                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage3" disabled><span class="font-sarabun">ถัดไป</span> →</button>
+                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
+                    <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage3" disabled>ถัดไป →</button>
                 </div>
             </div>
 
             <div class="form-page" id="page4">
                  <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800 font-sarabun">การจัดส่งและสรุปข้อมูล</h2>
-                    <p class="text-gray-600 font-inter mt-1">Delivery & Summary</p>
+                    <h2 class="text-2xl font-bold text-gray-800">การจัดส่งและสรุปข้อมูล</h2>
+                    <p class="text-gray-600 mt-1">Delivery & Summary</p>
                 </div>
                 <div class="mb-6">
-                    <label class="text-lg font-semibold text-gray-700 font-sarabun">รอบเวลาจัดส่ง (Delivery Time)<span class="text-red-500">*</span></label>
+                    <label class="text-lg font-semibold text-gray-700">รอบเวลาจัดส่ง (Delivery Time)<span class="text-red-500">*</span></label>
                     <div class="time-cards-grid grid gap-3 mt-3" id="deliveryTimeCards"></div>
                 </div>
                 <div class="autocomplete-container floating-label mt-6">
                     <input type="text" id="deliveryLocation" name="deliveryLocation" required class="input-medical w-full h-14 px-4 rounded-xl" autocomplete="off" placeholder=" ">
                     <label class="label-float left-4 top-4 text-gray-500">สถานที่ส่ง (Delivery Location) <span class="text-red-500">*</span></label>
                 </div>
-                <div id="summaryCard" class="mt-8 p-6 bg-gray-50 rounded-2xl"></div>
+
+                <div class="summary-docket" id="summaryCard"></div>
                 
                 <div class="flex justify-between mt-8">
-                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← <span class="font-sarabun">ย้อนกลับ</span></button>
-                    <button class="btn-primary text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg flex items-center justify-center" id="submitBtn" disabled>
-                        <span class="font-sarabun">ยืนยันและส่งข้อมูล</span>
-                    </button>
+                    <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
+                    <button class="btn-primary text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg flex items-center justify-center" id="submitBtn" disabled>ยืนยันและส่งข้อมูล</button>
                 </div>
             </div>
         </div>
@@ -275,9 +259,7 @@
     <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="main-container rounded-3xl p-8 text-center max-w-md mx-auto">
             <div id="modalContent"></div>
-            <button onclick="closeWindow()" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg w-full mt-6">
-                <span class="font-sarabun">ปิดหน้าต่าง</span> (Close)
-            </button>
+            <button onclick="closeWindow()" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg w-full mt-6">ปิดหน้าต่าง (Close)</button>
         </div>
     </div>
 
@@ -313,11 +295,7 @@
 
         async function fetchInitialData() {
             try {
-                // In a real app, you would fetch this from your backend
-                // const response = await fetch(`/api/get_user_info?line_user_id=${lineUserId}`);
-                // const data = await response.json();
-                
-                // --- Mocking API response for demonstration ---
+                // MOCK API: In a real app, this would fetch from your backend.
                 const mockData = {
                     wards: ["2ก", "2ข", "IMC 2ค", "NICU", "2ง", "IMC 2ง", "2ฉ", "3ก", "3ข", "3ค", "3ง", "3จ", "IMC 3จ", "3ฉ", "4ก", "4ข1", "4ข2", "4ข3", "4ค", "4ง", "5ก", "5ข", "5ค", "5ง", "5จ", "6ก", "6ข", "6จ", "OPD AE", "AE1", "AE2", "AE3", "AE4", "SICU1", "SICU2", "SICU3", "NSICU", "Burn Unit", "CCU", "PICU", "MICU 1", "MICU 2", "MICU 3", "CVT-ICU", "SCTU 1", "หอสงฆ์อาพาธ", "8B", "8C", "9A", "9B", "9C", "สว 11", "สว 12", "สว 13", "สว 14", "สว 15", "กว. 6/1", "กว. 6/2", "กว. 7/1", "ห้องคลอด", "ห้องให้เลือดผู้ป่วยนอก", "ไตเทียม", "ห้อง x-ray", "Endoscope สว.ชั้น4"],
                     schedules: [
@@ -327,24 +305,27 @@
                         { id: 10, time: "21.00น." }, { id: 11, time: "23.00น." }
                     ],
                     user_profile: {
-                        ward_name: "MICU 1", // Example pre-filled ward
-                        reporter_name: "สมชาย ใจดี" // Example pre-filled name
+                        ward_name: "MICU 1" // ONLY the ward is detected dynamically
                     }
                 };
-                // --- End Mocking ---
 
                 allWards = mockData.wards;
                 deliverySchedules = mockData.schedules;
                 
-                // Pre-fill user data
-                document.getElementById('wardName').value = mockData.user_profile.ward_name || '';
-                document.getElementById('reporterName').value = mockData.user_profile.reporter_name || '';
-                document.getElementById('deliveryLocation').value = mockData.user_profile.ward_name || ''; // Default delivery to user's ward
+                const userProfile = mockData.user_profile || {};
+                
+                // Pre-fill dynamically detected data
+                document.getElementById('wardName').value = userProfile.ward_name || '';
+                document.getElementById('deliveryLocation').value = userProfile.ward_name || '';
+
+                // Reporter name is intentionally left BLANK
+                document.getElementById('reporterName').value = ''; 
                  
-                // Trigger change to update floating labels and validation
-                ['wardName', 'reporterName', 'deliveryLocation'].forEach(id => {
-                     document.getElementById(id).dispatchEvent(new Event('input', { bubbles: true }));
-                });
+                // Trigger 'input' event to update floating labels for pre-filled fields
+                if (userProfile.ward_name) {
+                     document.getElementById('wardName').dispatchEvent(new Event('input', { bubbles: true }));
+                     document.getElementById('deliveryLocation').dispatchEvent(new Event('input', { bubbles: true }));
+                }
 
                 setupAutocomplete(document.getElementById("wardName"), allWards);
                 setupAutocomplete(document.getElementById("deliveryLocation"), allWards);
@@ -361,11 +342,9 @@
         const previousPage = () => { if (currentPage > 1) { currentPage--; updatePageUI(); } };
 
         function updatePageUI() {
-            // Update page visibility
             document.querySelectorAll('.form-page').forEach(page => page.classList.remove('active'));
             document.getElementById(`page${currentPage}`).classList.add('active');
             
-            // Update progress bar
             const progress = (currentPage / 4) * 100;
             document.getElementById('progressBar').style.width = `${progress}%`;
             document.getElementById('stepDescription').textContent = stepDescriptions[currentPage];
@@ -393,7 +372,6 @@
             const card = event.currentTarget;
             selectedBloodType = card.dataset.type;
             
-            // Apply theme
             const mainContainer = document.getElementById('mainContainer');
             mainContainer.classList.remove('theme-red-cells', 'theme-plasma', 'theme-cryo');
             if (selectedBloodType === 'redcell') mainContainer.classList.add('theme-red-cells');
@@ -409,13 +387,13 @@
         function createDeliveryTimeCards() {
             const container = document.getElementById('deliveryTimeCards');
             container.innerHTML = deliverySchedules.map(({id, time}) => `
-                <div class="selection-card text-center p-2 cursor-pointer time-card" data-time-id="${id}" data-time-value="${time}">
+                <div class="selection-card text-center p-3 cursor-pointer time-card" data-time-id="${id}" data-time-value="${time}">
                     <div class="text-xl">🕐</div>
-                    <div class="text-base font-semibold font-sarabun mt-1">${time}</div>
+                    <div class="text-base font-semibold mt-1">${time}</div>
                 </div>`).join('');
             container.querySelectorAll('.time-card').forEach(card => card.addEventListener('click', () => {
-                container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected', 'border-medical-red-500', 'bg-medical-red-50', 'text-medical-red-700'));
-                card.classList.add('selected', 'border-medical-red-500', 'bg-medical-red-50', 'text-medical-red-700');
+                container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
                 selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
                 validatePage(4);
             }));
@@ -431,17 +409,17 @@
                 cryoprecipitate: [{ key: "ละลายพร้อมใช้", value: "Ready to Use" }, { key: "ประเภทแช่แข็ง", value: "Frozen Type" }]
             };
             
-            content += `<div class="mt-6"><label class="text-lg font-semibold text-gray-700 font-sarabun">ชนิดย่อย (Subtype)<span class="text-red-500">*</span></label><div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3" id="subtypeCards">`;
+            content += `<div class="mt-6"><label class="text-lg font-semibold text-gray-700">ชนิดย่อย (Subtype)<span class="text-red-500">*</span></label><div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3" id="subtypeCards">`;
             subtypes[selectedBloodType].forEach(sub => {
-                content += `<div class="selection-card text-center p-4 cursor-pointer subtype-card" data-subtype="${sub.key}"><h4 class="text-lg font-bold font-inter">${sub.key}</h4><p class="text-sm text-gray-500">${sub.value}</p></div>`;
+                content += `<div class="selection-card text-center p-4 cursor-pointer subtype-card"><h4 class="text-lg font-bold">${sub.key}</h4><p class="text-sm text-gray-500">${sub.value}</p></div>`;
             });
             content += `</div></div><input type="hidden" id="subtype">`;
             container.innerHTML = content;
 
             container.querySelectorAll('input').forEach(input => input.addEventListener('input', () => validatePage(3)));
             container.querySelectorAll('.subtype-card').forEach(card => card.addEventListener('click', () => {
-                container.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('selected', 'border-medical-red-500', 'bg-medical-red-50'));
-                card.classList.add('selected', 'border-medical-red-500', 'bg-medical-red-50');
+                container.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
                 document.getElementById('subtype').value = card.dataset.subtype;
                 validatePage(3);
             }));
@@ -463,24 +441,16 @@
             
             const summaryContainer = document.getElementById('summaryCard');
             summaryContainer.innerHTML = `
-                <h3 class="text-xl font-bold text-gray-800 font-sarabun mb-4">สรุปข้อมูล</h3>
-                <div class="space-y-3">
-                    <div class="summary-row text-sm">
-                        <span class="font-semibold text-gray-500">ผู้ป่วย/HN:</span>
-                        <span class="font-medium text-gray-800 text-right">${formData.patientName} / ${formData.hn}</span>
-                    </div>
-                    <div class="summary-row text-sm">
-                        <span class="font-semibold text-gray-500">ผลิตภัณฑ์:</span>
-                        <span class="font-medium text-gray-800 text-right">${formData.bloodType.toUpperCase()} - ${formData.subtype} (${formData.quantity} Units)</span>
-                    </div>
-                    <div class="summary-row text-sm">
-                        <span class="font-semibold text-gray-500">รอบส่ง/สถานที่:</span>
-                        <span class="font-medium text-gray-800 text-right">${formData.deliveryTime} @ ${formData.deliveryLocation}</span>
-                    </div>
-                     <div class="summary-row text-sm">
-                        <span class="font-semibold text-gray-500">ผู้แจ้ง:</span>
-                        <span class="font-medium text-gray-800 text-right">${formData.reporterName}</span>
-                    </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-3">ใบสรุปคำขอ (Request Summary)</h3>
+                <div class="summary-grid mt-4">
+                    <span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName}</span>
+                    <span class="summary-label">HN:</span> <span class="summary-value">${formData.hn}</span>
+                    <span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName}</span>
+                    <span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${formData.bloodType.toUpperCase()}</span>
+                    <span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype} (${formData.quantity} Units)</span>
+                    <span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime}</span>
+                    <span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation}</span>
+                    <span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName}</span>
                 </div>`;
         }
 
@@ -503,7 +473,7 @@
         async function submitForm() {
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<div class="loading-spinner"></div> <span class="font-sarabun">กำลังส่ง...</span>`;
+            submitBtn.innerHTML = `<div class="loading-spinner"></div> <span>กำลังส่ง...</span>`;
             
             const finalData = {
                 line_user_id: lineUserId,
@@ -512,7 +482,6 @@
             };
             
             try {
-                // Use the new /api/submit_request endpoint
                 const response = await fetch('/api/submit_request', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -528,26 +497,20 @@
                 console.error('Submission error:', error);
                 showErrorModal('เกิดข้อผิดพลาดในการส่งข้อมูล', error.message);
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<span class="font-sarabun">ยืนยันและส่งข้อมูล</span>`;
+                submitBtn.innerHTML = `ยืนยันและส่งข้อมูล`;
             }
         }
         
         // --- Modals & Utils ---
         function showSuccessModal(title, message) {
-            document.getElementById('modalContent').innerHTML = `
-                <h2 class="text-2xl font-bold text-green-600 font-sarabun">${title}</h2>
-                <p class="text-gray-600 mt-4">${message}</p>`;
+            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
         }
         function showErrorModal(title, message) {
-            document.getElementById('modalContent').innerHTML = `
-                <h2 class="text-2xl font-bold text-red-600 font-sarabun">${title}</h2>
-                <p class="text-gray-600 mt-4">${message}</p>`;
+            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-red-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
         }
         function closeWindow() {
-            // Add LIFF close logic here if applicable
-            // liff.closeWindow();
             document.getElementById('modalContent').innerHTML = `<p>คุณสามารถปิดหน้าต่างนี้ได้</p>`;
             document.querySelector('#messageModal button').style.display = 'none';
         }
