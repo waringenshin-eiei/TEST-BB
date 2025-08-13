@@ -34,14 +34,29 @@
         .updating { animation: updateGlow 1s ease-in-out; }
         @keyframes updateGlow { 0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); } 50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); } }
         
-        /* --- CHANGED: Highlight animation updated to last 60 seconds with new colors --- */
-        .new-row { 
-            animation: highlightNewRow 60s linear; 
+        /* --- CHANGED: Status-specific highlight animations for 60 seconds --- */
+        .new-row-submitted { animation: highlight-submitted 60s linear; }
+        @keyframes highlight-submitted {
+            0%, 5% { background-color: #dcfce7; } /* Green for 'submitted' */
+            100% { background-color: transparent; }
         }
-        @keyframes highlightNewRow {
-            0%   { background-color: #a7f3d0; } /* Start with a vibrant green */
-            15%  { background-color: #fef08a; } /* Fade to yellow over ~10 seconds */
-            100% { background-color: transparent; } /* Fade to transparent over the remaining time */
+
+        .new-row-initiated { animation: highlight-initiated 60s linear; }
+        @keyframes highlight-initiated {
+            0%, 5% { background-color: #dbeafe; } /* Blue for 'initiated' */
+            100% { background-color: transparent; }
+        }
+
+        .new-row-pending { animation: highlight-pending 60s linear; }
+        @keyframes highlight-pending {
+            0%, 5% { background-color: #fef3c7; } /* Amber for 'pending' */
+            100% { background-color: transparent; }
+        }
+
+        .new-row-default { animation: highlight-default 60s linear; }
+        @keyframes highlight-default {
+            0%, 5% { background-color: #f1f5f9; } /* Gray for other statuses */
+            100% { background-color: transparent; }
         }
     </style>
 </head>
@@ -50,18 +65,10 @@
     <div id="notification-toast" class="notification-toast bg-green-500 text-white p-4 rounded-lg shadow-lg max-w-sm">
         <div class="flex items-center">
             <div class="flex-shrink-0">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <div class="ml-3">
-                <p class="font-medium" id="toast-message">คำขอใหม่เข้ามาแล้ว!</p>
-            </div>
-            <button onclick="hideNotification()" class="ml-4 text-white hover:text-gray-200">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                </svg>
-            </button>
+            <div class="ml-3"><p class="font-medium" id="toast-message">คำขอใหม่เข้ามาแล้ว!</p></div>
+            <button onclick="hideNotification()" class="ml-4 text-white hover:text-gray-200"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg></button>
         </div>
     </div>
 
@@ -75,7 +82,7 @@
                 <div class="text-right">
                     <div class="flex items-center justify-end mb-2">
                         <div id="connection-status" class="status-indicator offline"></div>
-                        <span id="connection-text" class="text-sm text-gray-500">รอการเชื่อมต่อ...</span>
+                        <span id="connection-text" class="text-sm text-gray-500"></span>
                     </div>
                     <p class="text-xs text-gray-400">อัพเดทล่าสุด: <span id="last-update">-</span></p>
                 </div>
@@ -93,30 +100,11 @@
             <div id="dashboard-content" class="tab-content active">
                 <div id="dashboard-loader" class="text-center p-8"><div class="loader"></div></div>
                 <div id="dashboard-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="stat-card p-6 text-center">
-                        <p class="text-gray-500">คำขอวันนี้</p>
-                        <h2 id="stat-today" class="text-4xl font-bold text-red-600">0</h2>
-                    </div>
-                    <div class="stat-card p-6 text-center">
-                        <p class="text-gray-500">รอการยืนยัน</p>
-                        <h2 id="stat-submitted" class="text-4xl font-bold text-amber-600">0</h2>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-2">
-                        <canvas id="bloodTypeChart"></canvas>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4">
-                        <canvas id="wardChart"></canvas>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4">
-                        <h3 class="font-semibold text-lg mb-4">5 คำขอล่าสุด (ที่ยืนยันแล้ว)</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left table-auto">
-                                <tbody id="recent-requests-list">
-                                    <tr><td colspan="4" class="p-2 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <div class="stat-card p-6 text-center"><p class="text-gray-500">คำขอวันนี้</p><h2 id="stat-today" class="text-4xl font-bold text-red-600">0</h2></div>
+                    <div class="stat-card p-6 text-center"><p class="text-gray-500">รอการยืนยัน</p><h2 id="stat-submitted" class="text-4xl font-bold text-amber-600">0</h2></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-2"><canvas id="bloodTypeChart"></canvas></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4"><canvas id="wardChart"></canvas></div>
+                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4"><h3 class="font-semibold text-lg mb-4">5 คำขอล่าสุด (ที่ยืนยันแล้ว)</h3><div class="overflow-x-auto"><table class="w-full text-left table-auto"><tbody id="recent-requests-list"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -124,27 +112,12 @@
                 <div class="stat-card p-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         <input id="search-input" type="text" placeholder="ค้นหา HN หรือชื่อผู้ป่วย..." class="w-full p-2 border rounded">
-                        <select id="status-filter" class="w-full p-2 border rounded">
-                            <option value="">ทุกสถานะ</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="initiated">Initiated</option>
-                            <option value="pending">Pending</option>
-                        </select>
+                        <select id="status-filter" class="w-full p-2 border rounded"><option value="">ทุกสถานะ</option><option value="submitted">Submitted</option><option value="initiated">Initiated</option><option value="pending">Pending</option></select>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left table">
-                            <thead><tr>
-                                <th class="p-3">Request ID</th>
-                                <th class="p-3">วันที่</th>
-                                <th class="p-3">HN</th>
-                                <th class="p-3">ชื่อผู้ป่วย</th>
-                                <th class="p-3">หอผู้ป่วย</th>
-                                <th class="p-3">ส่วนประกอบ</th>
-                                <th class="p-3">สถานะ</th>
-                            </tr></thead>
-                            <tbody id="requests-table-body">
-                                <tr><td colspan="7" class="text-center p-8 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
-                            </tbody>
+                            <thead><tr><th class="p-3">Request ID</th><th class="p-3">วันที่</th><th class="p-3">HN</th><th class="p-3">ชื่อผู้ป่วย</th><th class="p-3">หอผู้ป่วย</th><th class="p-3">ส่วนประกอบ</th><th class="p-3">สถานะ</th></tr></thead>
+                            <tbody id="requests-table-body"></tbody>
                         </table>
                         <div id="table-loader" class="text-center p-8 hidden"><div class="loader"></div></div>
                     </div>
@@ -159,104 +132,71 @@
         let requestsPage = 1;
         let chartInstances = {};
         let eventSource = null;
-        let refreshInterval = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             initializeApp();
         });
 
         function initializeApp() {
+            updateConnectionStatus(false); // Set initial state
             setupEventListeners();
             loadInitialData();
             setTimeout(setupServerSentEvents, 1000);
         }
 
         function setupEventListeners() {
-            document.querySelectorAll('.tab-button').forEach(t => {
-                t.addEventListener('click', () => switchTab(t.dataset.tab));
-            });
-            const searchInput = document.getElementById('search-input');
-            searchInput.addEventListener('input', debounce(() => {
-                requestsPage = 1;
-                fetchRequests();
-            }, 500));
-            const statusFilter = document.getElementById('status-filter');
-            statusFilter.addEventListener('change', () => {
-                requestsPage = 1;
-                fetchRequests();
-            });
+            document.querySelectorAll('.tab-button').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+            document.getElementById('search-input').addEventListener('input', debounce(() => { requestsPage = 1; fetchRequests(); }, 500));
+            document.getElementById('status-filter').addEventListener('change', () => { requestsPage = 1; fetchRequests(); });
         }
 
         function setupServerSentEvents() {
-            if (eventSource) {
-                eventSource.close();
-            }
+            if (eventSource) eventSource.close();
             eventSource = new EventSource('/api/sse-updates');
 
-            eventSource.onopen = () => {
-                console.log('✅ SSE connected.');
-                updateConnectionStatus(true);
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
-            };
-
+            eventSource.onopen = () => { updateConnectionStatus(true); };
             eventSource.onmessage = (event) => {
-                // Ensure status is shown as online when a message is received
                 if (document.getElementById('connection-status').classList.contains('online') === false) {
                     updateConnectionStatus(true);
                 }
-                // Ignore empty messages or heartbeats without a proper type
                 if (!event.data) return;
                 const data = JSON.parse(event.data);
                 if (data.type === 'heartbeat' || data.type === 'connected') return;
-
                 handleRealTimeUpdate(data);
             };
-
-            // --- CHANGED: Smarter error handling ---
-            eventSource.onerror = (err) => {
-                console.warn('SSE connection error. The browser will attempt to reconnect.', err);
-                // The EventSource object's readyState will be CONNECTING while it attempts to reconnect
+            eventSource.onerror = () => {
                 if (eventSource.readyState === EventSource.CONNECTING) {
                     updateConnectionStatus('reconnecting');
-                } else if (eventSource.readyState === EventSource.CLOSED) {
-                    // If it's permanently closed, then fall back to polling
-                    console.error('❌ SSE connection permanently closed. Falling back to polling.');
+                } else {
                     updateConnectionStatus(false);
-                    if (!refreshInterval) {
-                        refreshInterval = setInterval(() => loadInitialData(true), 30000);
-                    }
                 }
             };
         }
         
+        // --- CHANGED: Simplified connection status logic ---
         function updateConnectionStatus(status) {
             const statusIndicator = document.getElementById('connection-status');
             const connectionText = document.getElementById('connection-text');
+
             if (status === true) {
                 statusIndicator.className = 'status-indicator online';
-                connectionText.textContent = 'เชื่อมต่อแล้ว (Real-time)';
+                connectionText.textContent = 'เชื่อมต่อเรียบร้อย';
             } else if (status === 'reconnecting') {
                 statusIndicator.className = 'status-indicator reconnecting';
-                connectionText.textContent = 'กำลังเชื่อมต่อใหม่...';
-            } else {
+                connectionText.textContent = ''; // No text during reconnect
+            } else { // false or initial state
                 statusIndicator.className = 'status-indicator offline';
-                connectionText.textContent = 'เชื่อมต่อล้มเหลว (Polling mode)';
+                connectionText.textContent = ''; // No text when offline
             }
         }
 
         function handleRealTimeUpdate(data) {
-            console.log('📡 SSE Update Received:', data);
             updateLastUpdateTime();
-
             if (data.type === 'new_request') {
                 showNotification(`คำขอใหม่: ${data.request_id}`, 'success');
             } else if (data.type === 'status_update') {
                 showNotification(`อัพเดทสถานะ: ${data.request_id}`, 'info');
             }
-
             if (currentTab === 'dashboard') {
                 fetchDashboardSummary(true);
             } else if (currentTab === 'requests') {
@@ -266,35 +206,27 @@
         
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notification-toast');
-            const messageEl = document.getElementById('toast-message');
+            messageEl = document.getElementById('toast-message');
             messageEl.textContent = message;
             toast.className = `notification-toast ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white p-4 rounded-lg shadow-lg max-w-sm show`;
             setTimeout(() => hideNotification(), 5000);
         }
 
         function hideNotification() {
-            const toast = document.getElementById('notification-toast');
-            toast.classList.replace('show', 'hide');
+            document.getElementById('notification-toast').classList.replace('show', 'hide');
         }
 
         function loadInitialData(isBackgroundRefresh = false) {
             updateLastUpdateTime();
-            if (currentTab === 'dashboard') {
-                fetchDashboardSummary(isBackgroundRefresh);
-            } else {
-                fetchRequests(isBackgroundRefresh);
-            }
+            if (currentTab === 'dashboard') fetchDashboardSummary(isBackgroundRefresh);
+            else fetchRequests(isBackgroundRefresh);
         }
 
         function switchTab(tabName) {
             currentTab = tabName;
             requestsPage = 1;
-            document.querySelectorAll('.tab-button').forEach(b =>
-                b.classList.toggle('active', b.dataset.tab === tabName)
-            );
-            document.querySelectorAll('.tab-content').forEach(c =>
-                c.classList.toggle('active', c.id === `${tabName}-content`)
-            );
+            document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `${tabName}-content`));
             loadInitialData();
         }
 
@@ -305,32 +237,25 @@
         async function fetchAPI(url) {
             const response = await fetch(url);
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'API request failed' }));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                const err = await response.json().catch(() => ({ error: 'API Error' }));
+                throw new Error(err.error);
             }
-            return await response.json();
+            return response.json();
         }
 
         async function fetchDashboardSummary(isBackgroundRefresh = false) {
             const loader = document.getElementById('dashboard-loader');
             const grid = document.getElementById('dashboard-grid');
-
             if (!isBackgroundRefresh) {
                 grid.classList.add('hidden');
                 loader.style.display = 'block';
             }
-
             try {
                 const data = await fetchAPI('/api/dashboard?action=get_summary');
                 renderDashboard(data);
-                if (isBackgroundRefresh) {
-                    animateUpdate('dashboard');
-                }
+                if (isBackgroundRefresh) animateUpdate('dashboard');
             } catch (error) {
-                console.error('Dashboard fetch error:', error);
-                if (!isBackgroundRefresh) {
-                    loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
-                }
+                if (!isBackgroundRefresh) loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
             } finally {
                 if (!isBackgroundRefresh) {
                     grid.classList.remove('hidden');
@@ -344,33 +269,22 @@
             const status = document.getElementById('status-filter').value;
             const tableBody = document.getElementById('requests-table-body');
             const loader = document.getElementById('table-loader');
-
             if (!isBackgroundRefresh) {
                 tableBody.innerHTML = '';
                 document.getElementById('pagination-controls').innerHTML = '';
                 loader.style.display = 'block';
             }
-            
-            const existingRequestIds = (isBackgroundRefresh && requestsPage === 1 && !search && !status)
-                ? new Set(Array.from(tableBody.querySelectorAll('tr')).map(tr => tr.cells[0]?.textContent))
-                : null;
-
+            const existingIds = (isBackgroundRefresh && requestsPage === 1 && !search && !status)
+                ? new Set(Array.from(tableBody.querySelectorAll('tr')).map(tr => tr.cells[0]?.textContent)) : null;
             try {
                 const data = await fetchAPI(`/api/dashboard?action=get_requests&page=${requestsPage}&search=${encodeURIComponent(search)}&status=${status}`);
-                renderRequestsTable(data, existingRequestIds);
+                renderRequestsTable(data, existingIds);
                 renderPagination(data);
-                if (isBackgroundRefresh) {
-                    animateUpdate('requests');
-                }
+                if (isBackgroundRefresh) animateUpdate('requests');
             } catch (error) {
-                console.error('Requests fetch error:', error);
-                if (!isBackgroundRefresh) {
-                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
-                }
+                if (!isBackgroundRefresh) tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
             } finally {
-                if (!isBackgroundRefresh) {
-                    loader.style.display = 'none';
-                }
+                if (!isBackgroundRefresh) loader.style.display = 'none';
             }
         }
 
@@ -378,159 +292,87 @@
             const elements = section === 'dashboard'
                 ? document.querySelectorAll('#dashboard-grid .stat-card')
                 : [document.querySelector('#requests-content .stat-card')];
-            
             elements.forEach(el => {
-                if (!el) return;
-                el.classList.add('updating');
-                setTimeout(() => el.classList.remove('updating'), 1000);
+                if (el) { el.classList.add('updating'); setTimeout(() => el.classList.remove('updating'), 1000); }
             });
         }
         
         function renderDashboard(data) {
             animateNumberChange(document.getElementById('stat-today'), data.requests_today || 0);
             animateNumberChange(document.getElementById('stat-submitted'), data.submitted_count || 0);
-
-            const recentList = document.getElementById('recent-requests-list');
-            recentList.innerHTML = data.recent_requests.length > 0
-                ? data.recent_requests.map(req => `
-                    <tr class="border-b">
-                        <td class="p-2 font-mono text-xs">${req.request_id}</td>
-                        <td class="p-2">${req.patient_name || '-'}</td>
-                        <td class="p-2">${req.ward_name || '-'}</td>
-                        <td class="p-2 text-gray-500">${formatDateTime(req.created_at)}</td>
-                    </tr>`).join('')
-                : '<tr><td colspan="4" class="p-2 text-gray-500">ไม่มีข้อมูลล่าสุด</td></tr>';
-
+            const list = document.getElementById('recent-requests-list');
+            list.innerHTML = data.recent_requests.length ? data.recent_requests.map(req => `
+                <tr class="border-b"><td class="p-2 font-mono text-xs">${req.request_id}</td><td class="p-2">${req.patient_name || '-'}</td><td class="p-2">${req.ward_name || '-'}</td><td class="p-2 text-gray-500">${formatDateTime(req.created_at)}</td></tr>`).join('') : '<tr><td colspan="4" class="p-2 text-gray-500">ไม่มีข้อมูลล่าสุด</td></tr>';
             renderChart('bloodTypeChart', 'pie', data.by_blood_type.map(d => d.component_type), data.by_blood_type.map(d => d.count), 'จำแนกตามประเภทเลือด (ที่ยืนยันแล้ว)');
             renderChart('wardChart', 'bar', data.by_ward.map(d => d.ward_name), data.by_ward.map(d => d.count), '10 หอผู้ป่วยที่ขอใช้เลือดสูงสุด (ที่ยืนยันแล้ว)');
         }
 
         function animateNumberChange(element, newValue) {
-            const currentValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
-            if (currentValue === newValue) return;
-            const duration = 500;
-            const stepTime = 20;
-            const steps = duration / stepTime;
-            const increment = (newValue - currentValue) / steps;
-            let current = currentValue;
+            const current = parseInt(element.textContent.replace(/,/g, '')) || 0;
+            if (current === newValue) return;
+            let val = current;
             const timer = setInterval(() => {
-                current += increment;
-                if ((increment > 0 && current >= newValue) || (increment < 0 && current <= newValue)) {
+                val += (newValue - current) / (500 / 20);
+                if ((newValue > current && val >= newValue) || (newValue < current && val <= newValue)) {
                     element.textContent = newValue.toLocaleString();
                     clearInterval(timer);
                 } else {
-                    element.textContent = Math.round(current).toLocaleString();
+                    element.textContent = Math.round(val).toLocaleString();
                 }
-            }, stepTime);
+            }, 20);
         }
-
+        
+        // --- CHANGED: Adds status-specific highlight class ---
         function renderRequestsTable(data, existingRequestIds = null) {
             const tableBody = document.getElementById('requests-table-body');
             if (!data.requests || data.requests.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-500">ไม่พบข้อมูล</td></tr>`;
                 return;
             }
-
             tableBody.innerHTML = data.requests.map(req => {
-                const component = req.request_data?.bloodType
-                    ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)`
-                    : req.blood_type || '';
+                const component = req.request_data?.bloodType ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)` : req.blood_type || '';
                 const isNew = existingRequestIds ? !existingRequestIds.has(req.request_id) : false;
-                
+                const highlightClass = isNew ? `new-row-${req.status || 'default'}` : '';
+
                 return `
-                <tr class="border-b ${isNew ? 'new-row' : ''}">
+                <tr class="border-b ${highlightClass}">
                     <td class="p-3 font-mono text-xs">${req.request_id}</td>
                     <td class="p-3">${formatDateTime(req.created_at)}</td>
                     <td class="p-3">${req.hospital_number || '-'}</td>
                     <td class="p-3">${req.patient_name || '-'}</td>
                     <td class="p-3">${req.ward_name || '-'}</td>
                     <td class="p-3">${component}</td>
-                    <td class="p-3">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(req.status)}">
-                            ${req.status}
-                        </span>
-                    </td>
+                    <td class="p-3"><span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(req.status)}">${req.status}</span></td>
                 </tr>`;
             }).join('');
         }
 
         function renderPagination(data) {
             const controls = document.getElementById('pagination-controls');
-            if (!data || data.total_pages <= 1) {
-                controls.innerHTML = ''; return;
-            }
+            if (!data || data.total_pages <= 1) { controls.innerHTML = ''; return; }
             controls.innerHTML = `
-                <span class="text-sm text-gray-700">
-                    หน้า ${data.current_page} / ${data.total_pages} (ทั้งหมด ${data.total_records} รายการ)
-                </span>
+                <span class="text-sm text-gray-700">หน้า ${data.current_page}/${data.total_pages} (ทั้งหมด ${data.total_records} รายการ)</span>
                 <div>
-                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''}
-                        class="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                        ก่อนหน้า
-                    </button>
-                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''}
-                        class="ml-2 px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                        ถัดไป
-                    </button>
+                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''} class="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">ก่อนหน้า</button>
+                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''} class="ml-2 px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">ถัดไป</button>
                 </div>`;
         }
 
-        function changePage(dir) {
-            requestsPage += dir;
-            fetchRequests();
-        };
-
-        const getStatusClass = (s) => ({
-            'submitted': 'bg-green-100 text-green-800',
-            'pending': 'bg-amber-100 text-amber-800',
-            'initiated': 'bg-blue-100 text-blue-800'
-        }[s] || 'bg-gray-100 text-gray-800');
-
-        const formatDateTime = (iso) => iso
-            ? new Date(iso).toLocaleString('th-TH', {
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            })
-            : '-';
-
-        const debounce = (fn, delay) => {
-            let t;
-            return (...args) => {
-                clearTimeout(t);
-                t = setTimeout(() => fn(...args), delay);
-            };
-        };
+        function changePage(dir) { requestsPage += dir; fetchRequests(); };
+        const getStatusClass = s => ({'submitted': 'bg-green-100 text-green-800','pending': 'bg-amber-100 text-amber-800','initiated': 'bg-blue-100 text-blue-800'}[s] || 'bg-gray-100 text-gray-800');
+        const formatDateTime = iso => iso ? new Date(iso).toLocaleString('th-TH', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+        const debounce = (fn, delay) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); }; };
 
         function renderChart(canvasId, type, labels, data, title) {
             if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
             const ctx = document.getElementById(canvasId).getContext('2d');
             chartInstances[canvasId] = new Chart(ctx, {
-                type: type,
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'จำนวนคำขอ',
-                        data: data,
-                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
-                        borderColor: '#fff',
-                        borderWidth: type === 'pie' ? 2 : 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: type === 'pie' ? 'top' : 'none' },
-                        title: { display: true, text: title, font: { size: 16 } }
-                    },
-                    animation: { duration: 1000, easing: 'easeInOutQuart' }
-                }
+                type, data: { labels, datasets: [{ label: 'จำนวนคำขอ', data, backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'], borderColor: '#fff', borderWidth: type === 'pie' ? 2 : 1 }] },
+                options: { responsive: true, plugins: { legend: { position: type === 'pie' ? 'top' : 'none' }, title: { display: true, text: title, font: { size: 16 } } }, animation: { duration: 1000, easing: 'easeInOutQuart' } }
             });
         }
 
-        window.addEventListener('beforeunload', () => {
-            if (eventSource) eventSource.close();
-            if (refreshInterval) clearInterval(refreshInterval);
-        });
+        window.addEventListener('beforeunload', () => { if (eventSource) eventSource.close(); });
     </script>
 </body>
 </html>
