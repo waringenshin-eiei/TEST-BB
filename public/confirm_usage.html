@@ -60,7 +60,7 @@
         }
         .label-float {
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: #f9fafb; /* Must match input background */
+            background: #f9fafb;
         }
         .floating-label input:focus + .label-float { background: #fff; }
 
@@ -112,7 +112,6 @@
         .theme-plasma .selection-card.selected { --tw-accent-color: #d97706; background-color: #fffbeb; }
         .theme-cryo .selection-card.selected { --tw-accent-color: #0284c7; background-color: #f0f9ff; }
         
-
         /* Autocomplete Styles */
         .autocomplete-container { position: relative; }
         .autocomplete-items {
@@ -296,6 +295,7 @@
         async function fetchInitialData() {
             try {
                 // MOCK API: In a real app, this would fetch from your backend.
+                // Dynamic detection is removed for speed. The backend only provides lists.
                 const mockData = {
                     wards: ["2ก", "2ข", "IMC 2ค", "NICU", "2ง", "IMC 2ง", "2ฉ", "3ก", "3ข", "3ค", "3ง", "3จ", "IMC 3จ", "3ฉ", "4ก", "4ข1", "4ข2", "4ข3", "4ค", "4ง", "5ก", "5ข", "5ค", "5ง", "5จ", "6ก", "6ข", "6จ", "OPD AE", "AE1", "AE2", "AE3", "AE4", "SICU1", "SICU2", "SICU3", "NSICU", "Burn Unit", "CCU", "PICU", "MICU 1", "MICU 2", "MICU 3", "CVT-ICU", "SCTU 1", "หอสงฆ์อาพาธ", "8B", "8C", "9A", "9B", "9C", "สว 11", "สว 12", "สว 13", "สว 14", "สว 15", "กว. 6/1", "กว. 6/2", "กว. 7/1", "ห้องคลอด", "ห้องให้เลือดผู้ป่วยนอก", "ไตเทียม", "ห้อง x-ray", "Endoscope สว.ชั้น4"],
                     schedules: [
@@ -303,29 +303,16 @@
                         { id: 4, time: "13.00น." }, { id: 5, time: "14.00น." }, { id: 6, time: "15.00น." },
                         { id: 7, time: "16.00น." }, { id: 8, time: "18.00น." }, { id: 9, time: "20.00น." },
                         { id: 10, time: "21.00น." }, { id: 11, time: "23.00น." }
-                    ],
-                    user_profile: {
-                        ward_name: "MICU 1" // ONLY the ward is detected dynamically
-                    }
+                    ]
                 };
 
                 allWards = mockData.wards;
                 deliverySchedules = mockData.schedules;
                 
-                const userProfile = mockData.user_profile || {};
-                
-                // Pre-fill dynamically detected data
-                document.getElementById('wardName').value = userProfile.ward_name || '';
-                document.getElementById('deliveryLocation').value = userProfile.ward_name || '';
-
-                // Reporter name is intentionally left BLANK
-                document.getElementById('reporterName').value = ''; 
-                 
-                // Trigger 'input' event to update floating labels for pre-filled fields
-                if (userProfile.ward_name) {
-                     document.getElementById('wardName').dispatchEvent(new Event('input', { bubbles: true }));
-                     document.getElementById('deliveryLocation').dispatchEvent(new Event('input', { bubbles: true }));
-                }
+                // Fields start blank for manual entry.
+                document.getElementById('wardName').value = '';
+                document.getElementById('reporterName').value = '';
+                document.getElementById('deliveryLocation').value = '';
 
                 setupAutocomplete(document.getElementById("wardName"), allWards);
                 setupAutocomplete(document.getElementById("deliveryLocation"), allWards);
@@ -345,8 +332,7 @@
             document.querySelectorAll('.form-page').forEach(page => page.classList.remove('active'));
             document.getElementById(`page${currentPage}`).classList.add('active');
             
-            const progress = (currentPage / 4) * 100;
-            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressBar').style.width = `${(currentPage / 4) * 100}%`;
             document.getElementById('stepDescription').textContent = stepDescriptions[currentPage];
             
             if (currentPage === 3) showTypeSpecificFields();
@@ -358,8 +344,7 @@
             document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', handleProductSelection));
             ['nextPage1', 'nextPage2', 'nextPage3'].forEach(id => document.getElementById(id).addEventListener('click', nextPage));
             ['hn', 'patientName', 'wardName', 'reporterName', 'deliveryLocation'].forEach(id => {
-                const el = document.getElementById(id);
-                el.addEventListener('input', () => validatePage(currentPage));
+                document.getElementById(id).addEventListener('input', () => validatePage(currentPage));
             });
             document.getElementById('wardName').addEventListener('change', e => {
                 document.getElementById('deliveryLocation').value = e.target.value;
@@ -391,10 +376,16 @@
                     <div class="text-xl">🕐</div>
                     <div class="text-base font-semibold mt-1">${time}</div>
                 </div>`).join('');
+
             container.querySelectorAll('.time-card').forEach(card => card.addEventListener('click', () => {
                 container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
+                
+                // BUG FIX: Explicitly call updateSummary to ensure instant report refresh
+                if (currentPage === 4) {
+                    updateSummary();
+                }
                 validatePage(4);
             }));
         }
@@ -416,7 +407,7 @@
             content += `</div></div><input type="hidden" id="subtype">`;
             container.innerHTML = content;
 
-            container.querySelectorAll('input').forEach(input => input.addEventListener('input', () => validatePage(3)));
+            container.querySelectorAll('input, select').forEach(input => input.addEventListener('input', () => validatePage(3)));
             container.querySelectorAll('.subtype-card').forEach(card => card.addEventListener('click', () => {
                 container.querySelectorAll('.subtype-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
@@ -443,14 +434,14 @@
             summaryContainer.innerHTML = `
                 <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-3">ใบสรุปคำขอ (Request Summary)</h3>
                 <div class="summary-grid mt-4">
-                    <span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName}</span>
-                    <span class="summary-label">HN:</span> <span class="summary-value">${formData.hn}</span>
-                    <span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName}</span>
-                    <span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${formData.bloodType.toUpperCase()}</span>
-                    <span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype} (${formData.quantity} Units)</span>
-                    <span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime}</span>
-                    <span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation}</span>
-                    <span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName}</span>
+                    <span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName || '-'}</span>
+                    <span class="summary-label">HN:</span> <span class="summary-value">${formData.hn || '-'}</span>
+                    <span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName || '-'}</span>
+                    <span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${(formData.bloodType || '-').toUpperCase()}</span>
+                    <span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype || '-'} (${formData.quantity || 0} Units)</span>
+                    <span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime || '-'}</span>
+                    <span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation || '-'}</span>
+                    <span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName || '-'}</span>
                 </div>`;
         }
 
@@ -515,131 +506,54 @@
             document.querySelector('#messageModal button').style.display = 'none';
         }
 
-        // --- Autocomplete Logic (Restored from your original file) ---
+        // --- Autocomplete Logic ---
         function setupAutocomplete(input, suggestions) {
             if (!input || !suggestions) return;
-            
             let currentFocus = -1;
-            
-            input.addEventListener("input", function(e) {
+            input.addEventListener("input", function() {
                 closeAllLists();
-                
                 const val = this.value;
                 if (!val) return false;
-                
                 currentFocus = -1;
-                
                 const listContainer = document.createElement("div");
                 listContainer.setAttribute("class", "autocomplete-items");
                 this.parentNode.appendChild(listContainer);
-                
-                const filteredSuggestions = suggestions.filter(item => 
-                    item.toLowerCase().includes(val.toLowerCase())
-                ).sort((a, b) => {
-                    const aStarts = a.toLowerCase().startsWith(val.toLowerCase());
-                    const bStarts = b.toLowerCase().startsWith(val.toLowerCase());
-                    if (aStarts && !bStarts) return -1;
-                    if (!aStarts && bStarts) return 1;
-                    return a.localeCompare(b);
-                });
-                
+                const filteredSuggestions = suggestions.filter(item => item.toLowerCase().includes(val.toLowerCase())).sort((a,b) => (a.toLowerCase().startsWith(val.toLowerCase()) === b.toLowerCase().startsWith(val.toLowerCase())) ? a.localeCompare(b) : (a.toLowerCase().startsWith(val.toLowerCase()) ? -1 : 1));
                 filteredSuggestions.slice(0, 10).forEach(item => {
                     const itemDiv = document.createElement("div");
-                    const regex = new RegExp(`(${val})`, 'gi');
-                    const highlightedText = item.replace(regex, '<strong class="text-medical-red-600 bg-medical-red-100 px-1 rounded">$1</strong>');
-                    itemDiv.innerHTML = highlightedText;
-                    
+                    itemDiv.innerHTML = item.replace(new RegExp(`(${val})`, 'gi'), '<strong class="text-medical-red-600 bg-medical-red-100 px-1 rounded">$1</strong>');
                     itemDiv.addEventListener("click", function() {
                         input.value = item;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
                         input.dispatchEvent(new Event('change', { bubbles: true }));
                         closeAllLists();
-                        
-                        if (input.id === 'wardName') {
-                            const deliveryInput = document.getElementById('deliveryLocation');
-                            if (deliveryInput && !deliveryInput.value) {
-                                deliveryInput.value = item;
-                                deliveryInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                deliveryInput.dispatchEvent(new Event('change', { bubbles: true }));
-                            }
-                        }
                     });
-                    
                     listContainer.appendChild(itemDiv);
                 });
-                
-                if (filteredSuggestions.length === 0) {
-                    const noResultDiv = document.createElement("div");
-                    noResultDiv.innerHTML = '<span class="text-gray-500 italic">ไม่พบรายการที่ตรงกัน</span>';
-                    noResultDiv.className = 'p-4 text-center';
-                    listContainer.appendChild(noResultDiv);
-                }
             });
-            
             input.addEventListener("keydown", function(e) {
-                const items = this.parentNode.querySelector(".autocomplete-items");
-                if (items) {
-                    const itemDivs = items.getElementsByTagName("div");
-                    if (e.keyCode === 40) { // Down
-                        e.preventDefault();
-                        currentFocus++;
-                        addActive(itemDivs);
-                    } else if (e.keyCode === 38) { // Up
-                        e.preventDefault();
-                        currentFocus--;
-                        addActive(itemDivs);
-                    } else if (e.keyCode === 13) { // Enter
-                        e.preventDefault();
-                        if (currentFocus > -1 && itemDivs[currentFocus]) {
-                            itemDivs[currentFocus].click();
-                        }
-                    } else if (e.keyCode === 27) { // Escape
-                        closeAllLists();
-                    }
-                }
+                let items = this.parentNode.querySelector(".autocomplete-items");
+                if (items) items = items.getElementsByTagName("div");
+                if (e.keyCode === 40) { currentFocus++; addActive(items); } 
+                else if (e.keyCode === 38) { currentFocus--; addActive(items); } 
+                else if (e.keyCode === 13) { e.preventDefault(); if (currentFocus > -1 && items) items[currentFocus].click(); }
             });
-            
-            input.addEventListener("focus", function() {
-                if (this.value.length >= 1) {
-                    this.dispatchEvent(new Event('input'));
-                }
-            });
-            
             function addActive(items) {
                 if (!items) return false;
                 removeActive(items);
-                if (currentFocus >= items.length) currentFocus = 0;
+if (currentFocus >= items.length) currentFocus = 0;
                 if (currentFocus < 0) currentFocus = items.length - 1;
-                if (items[currentFocus]) {
-                    items[currentFocus].classList.add("autocomplete-active");
-                    items[currentFocus].scrollIntoView({ block: 'nearest' });
-                }
+                items[currentFocus].classList.add("autocomplete-active");
             }
-            
             function removeActive(items) {
+                for (let i = 0; i < items.length; i++) items[i].classList.remove("autocomplete-active");
+            }
+            function closeAllLists(elmnt) {
+                const items = document.getElementsByClassName("autocomplete-items");
                 for (let i = 0; i < items.length; i++) {
-                    items[i].classList.remove("autocomplete-active");
+                    if (elmnt != items[i] && elmnt != input) items[i].parentNode.removeChild(items[i]);
                 }
             }
-            
-            function closeAllLists(except = null) {
-                const autocompleteItems = document.getElementsByClassName("autocomplete-items");
-                for (let i = 0; i < autocompleteItems.length; i++) {
-                    if (except !== autocompleteItems[i] && except !== input) {
-                        autocompleteItems[i].parentNode.removeChild(autocompleteItems[i]);
-                    }
-                }
-            }
-            
-            document.addEventListener("click", function(e) {
-                if (!input.contains(e.target)) {
-                    closeAllLists(e.target);
-                }
-            });
-
-            document.addEventListener("scroll", function() {
-                closeAllLists();
-            });
+            document.addEventListener("click", e => closeAllLists(e.target));
         }
     </script>
 </body>
