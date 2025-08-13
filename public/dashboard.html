@@ -51,7 +51,6 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <!-- Notification Toast -->
     <div id="notification-toast" class="notification-toast bg-green-500 text-white p-4 rounded-lg shadow-lg max-w-sm">
         <div class="flex items-center">
             <div class="flex-shrink-0">
@@ -78,9 +77,9 @@
                     <p class="text-gray-500">ภาพรวมและรายการแจ้งใช้เลือดทั้งหมด</p>
                 </div>
                 <div class="text-right">
-                    <div class="flex items-center mb-2">
+                    <div class="flex items-center justify-end mb-2">
                         <div id="connection-status" class="status-indicator offline"></div>
-                        <span id="connection-text" class="text-sm text-gray-500">รอการเชื่อมต่อ SSE...</span>
+                        <span id="connection-text" class="text-sm text-gray-500">รอการเชื่อมต่อ...</span>
                     </div>
                     <p class="text-xs text-gray-400">อัพเดทล่าสุด: <span id="last-update">-</span></p>
                 </div>
@@ -151,7 +150,7 @@
                                 <tr><td colspan="7" class="text-center p-8 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
                             </tbody>
                         </table>
-                        <div id="table-loader" class="text-center p-8"><div class="loader"></div></div>
+                        <div id="table-loader" class="text-center p-8 hidden"><div class="loader"></div></div>
                     </div>
                     <div id="pagination-controls" class="flex justify-between items-center mt-4"></div>
                 </div>
@@ -164,431 +163,273 @@
         let requestsPage = 1;
         let chartInstances = {};
         let eventSource = null;
-        let lastDataHash = {};
+        let refreshInterval = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 DOM loaded, initializing dashboard...');
             initializeApp();
         });
 
         function initializeApp() {
-            console.log('🚀 Initializing dashboard app...');
-            try {
-                setupEventListeners();
-                console.log('✅ Event listeners setup complete');
-                
-                loadInitialData(); // Load initial data first
-                console.log('✅ Initial data load started');
-                
-                // Setup SSE after initial load
-                setTimeout(() => {
-                    setupServerSentEvents();
-                }, 1000);
-                
-            } catch (error) {
-                console.error('❌ Error initializing app:', error);
-            }
+            setupEventListeners();
+            loadInitialData(); // Load initial data on page load
+            setTimeout(setupServerSentEvents, 1000); // Attempt SSE connection after initial load
         }
 
         function setupEventListeners() {
-            console.log('🎛️ Setting up event listeners...');
-            
-            try {
-                // Tab buttons
-                const tabButtons = document.querySelectorAll('.tab-button');
-                console.log('Found tab buttons:', tabButtons.length);
-                tabButtons.forEach(t => {
-                    t.addEventListener('click', () => {
-                        console.log('Tab clicked:', t.dataset.tab);
-                        switchTab(t.dataset.tab);
-                    });
-                });
+            // Tab buttons
+            document.querySelectorAll('.tab-button').forEach(t => {
+                t.addEventListener('click', () => switchTab(t.dataset.tab));
+            });
 
-                // Search input
-                const searchInput = document.getElementById('search-input');
-                if (searchInput) {
-                    searchInput.addEventListener('input', debounce(fetchRequests, 500));
-                    console.log('✅ Search input listener added');
-                } else {
-                    console.warn('⚠️ Search input not found');
-                }
+            // Search input
+            const searchInput = document.getElementById('search-input');
+            searchInput.addEventListener('input', debounce(() => {
+                requestsPage = 1;
+                fetchRequests();
+            }, 500));
 
-                // Status filter
-                const statusFilter = document.getElementById('status-filter');
-                if (statusFilter) {
-                    statusFilter.addEventListener('change', () => {
-                        requestsPage = 1;
-                        fetchRequests();
-                    });
-                    console.log('✅ Status filter listener added');
-                } else {
-                    console.warn('⚠️ Status filter not found');
-                }
-                
-                console.log('✅ All event listeners setup successfully');
-            } catch (error) {
-                console.error('❌ Error setting up event listeners:', error);
-            }
-        }
-
-        function setupAutoRefresh() {
-            // Only setup auto-refresh if SSE is not connected
-            if (refreshInterval) clearInterval(refreshInterval);
-            
-            if (!eventSource || eventSource.readyState !== EventSource.OPEN) {
-                refreshInterval = setInterval(() => {
-                    if (isAutoRefreshEnabled && (!eventSource || eventSource.readyState !== EventSource.OPEN)) {
-                        loadInitialData();
-                    }
-                }, 30000); // Refresh every 30 seconds only if SSE is not working
-            }
+            // Status filter
+            const statusFilter = document.getElementById('status-filter');
+            statusFilter.addEventListener('change', () => {
+                requestsPage = 1;
+                fetchRequests();
+            });
         }
 
         function setupServerSentEvents() {
-            // Check if SSE endpoint exists first
-            fetch('/api/sse-updates', { method: 'HEAD' })
-                .then(response => {
-                    if (response.ok) {
-                        // SSE endpoint exists, try to establish connection
-                        try {
-                            eventSource = new EventSource('/api/sse-updates');
-                            
-                            eventSource.onopen = () => {
-                                updateConnectionStatus(true);
-                                // Stop auto-refresh when SSE is connected
-                                if (refreshInterval) {
-                                    clearInterval(refreshInterval);
-                                    refreshInterval = null;
-                                }
-                                console.log('✅ SSE connected - Auto-refresh disabled');
-                            };
+            if (eventSource) {
+                eventSource.close();
+            }
+            eventSource = new EventSource('/api/sse-updates');
 
-                            eventSource.onmessage = (event) => {
-                                const data = JSON.parse(event.data);
-                                handleRealTimeUpdate(data);
-                            };
+            eventSource.onopen = () => {
+                console.log('✅ SSE connected.');
+                updateConnectionStatus(true);
+                if (refreshInterval) clearInterval(refreshInterval); // Stop polling if SSE connects
+            };
 
-                            eventSource.onerror = () => {
-                                console.log('❌ SSE connection failed - Falling back to auto-refresh');
-                                updateConnectionStatus(false);
-                                setupAutoRefresh();
-                            };
-                        } catch (error) {
-                            console.log('SSE connection failed:', error);
-                            updateConnectionStatus(false);
-                            setupAutoRefresh();
-                        }
-                    } else {
-                        // SSE endpoint doesn't exist, use polling mode
-                        console.log('SSE endpoint not available, using polling mode');
-                        updateConnectionStatus(false);
-                        setupAutoRefresh();
-                    }
-                })
-                .catch(() => {
-                    // Network error or endpoint doesn't exist
-                    console.log('SSE endpoint not found, using polling mode');
-                    updateConnectionStatus(false);
-                    setupAutoRefresh();
-                });
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                handleRealTimeUpdate(data);
+            };
+
+            eventSource.onerror = () => {
+                console.warn('❌ SSE connection failed. Falling back to polling.');
+                updateConnectionStatus(false);
+                eventSource.close();
+                // Fallback to polling every 30 seconds
+                if (!refreshInterval) {
+                    refreshInterval = setInterval(() => loadInitialData(true), 30000);
+                }
+            };
+        }
 
         function updateConnectionStatus(isOnline) {
             const statusIndicator = document.getElementById('connection-status');
             const connectionText = document.getElementById('connection-text');
-            
             if (isOnline) {
                 statusIndicator.className = 'status-indicator online';
                 connectionText.textContent = 'เชื่อมต่อแล้ว (Real-time)';
             } else {
                 statusIndicator.className = 'status-indicator offline';
-                connectionText.textContent = 'รอการเชื่อมต่อ SSE...';
+                connectionText.textContent = 'เชื่อมต่อล้มเหลว (Polling mode)';
             }
         }
 
         function handleRealTimeUpdate(data) {
-            console.log('Real-time update received:', data);
-            
-            // Show notification for new requests
+            console.log('📡 SSE Update Received:', data);
+            updateLastUpdateTime();
+
             if (data.type === 'new_request') {
                 showNotification(`คำขอใหม่: ${data.request_id}`, 'success');
-                loadInitialData(); // Refresh data
             } else if (data.type === 'status_update') {
                 showNotification(`อัพเดทสถานะ: ${data.request_id}`, 'info');
-                loadInitialData();
+            }
+
+            // Refresh the data for the currently active tab in the background
+            if (currentTab === 'dashboard') {
+                fetchDashboardSummary(true); // Pass true for background refresh
+            } else if (currentTab === 'requests') {
+                fetchRequests(true); // Pass true for background refresh
             }
         }
-
+        
         function showNotification(message, type = 'success') {
             const toast = document.getElementById('notification-toast');
             const messageEl = document.getElementById('toast-message');
-            
-            // Set message and style
             messageEl.textContent = message;
             toast.className = `notification-toast ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white p-4 rounded-lg shadow-lg max-w-sm show`;
-            
-            // Auto hide after 5 seconds
-            setTimeout(() => {
-                hideNotification();
-            }, 5000);
+            setTimeout(() => hideNotification(), 5000);
         }
 
         function hideNotification() {
             const toast = document.getElementById('notification-toast');
-            toast.classList.remove('show');
-            toast.classList.add('hide');
-            setTimeout(() => {
-                toast.classList.remove('hide');
-            }, 300);
+            toast.classList.replace('show', 'hide');
         }
 
-        const loadInitialData = () => {
+        function loadInitialData(isBackgroundRefresh = false) {
             updateLastUpdateTime();
-            return currentTab === 'dashboard' ? fetchDashboardSummary() : fetchRequests();
-        };
-        
+            if (currentTab === 'dashboard') {
+                fetchDashboardSummary(isBackgroundRefresh);
+            } else {
+                fetchRequests(isBackgroundRefresh);
+            }
+        }
+
         function switchTab(tabName) {
-            console.log('🔄 Switching to tab:', tabName);
             currentTab = tabName;
             requestsPage = 1;
-            
-            // Update tab buttons
-            document.querySelectorAll('.tab-button').forEach(b => 
+            document.querySelectorAll('.tab-button').forEach(b =>
                 b.classList.toggle('active', b.dataset.tab === tabName)
             );
-            
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(c => 
+            document.querySelectorAll('.tab-content').forEach(c =>
                 c.classList.toggle('active', c.id === `${tabName}-content`)
             );
-            
             loadInitialData();
         }
 
         function updateLastUpdateTime() {
-            const timeEl = document.getElementById('last-update');
-            if (timeEl) {
-                timeEl.textContent = new Date().toLocaleTimeString('th-TH');
-            }
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('th-TH');
         }
 
         async function fetchAPI(url) {
-            try {
-                console.log('🌐 Fetching:', url);
-                const response = await fetch(url);
-                
-                if (!response.ok) {
-                    // If API doesn't exist, return dummy data for testing
-                    console.warn('⚠️ API not available, using dummy data');
-                    return getDummyData(url);
-                }
-                
-                const data = await response.json();
-                console.log('✅ API response received');
-                return data;
-            } catch (error) {
-                console.warn('⚠️ API error, using dummy data:', error.message);
-                return getDummyData(url);
+            const response = await fetch(url);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'API request failed' }));
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
             }
+            return await response.json();
         }
 
-        function getDummyData(url) {
-            if (url.includes('get_summary')) {
-                return {
-                    requests_today: 5,
-                    submitted_count: 12,
-                    by_blood_type: [
-                        { component_type: 'O+', count: 8 },
-                        { component_type: 'A+', count: 6 },
-                        { component_type: 'B+', count: 4 },
-                        { component_type: 'AB+', count: 2 }
-                    ],
-                    by_ward: [
-                        { ward_name: 'ICU', count: 10 },
-                        { ward_name: 'Emergency', count: 8 },
-                        { ward_name: 'Surgery', count: 6 },
-                        { ward_name: 'Medicine', count: 4 }
-                    ],
-                    recent_requests: [
-                        { request_id: 'BR240001', patient_name: 'Test Patient 1', ward_name: 'ICU', created_at: new Date().toISOString() },
-                        { request_id: 'BR240002', patient_name: 'Test Patient 2', ward_name: 'Emergency', created_at: new Date().toISOString() }
-                    ]
-                };
-            } else if (url.includes('get_requests')) {
-                return {
-                    requests: [
-                        { 
-                            request_id: 'BR240001', 
-                            created_at: new Date().toISOString(),
-                            hospital_number: 'HN123456',
-                            patient_name: 'Test Patient 1', 
-                            ward_name: 'ICU', 
-                            status: 'submitted',
-                            request_data: { bloodType: 'O+', quantity: 2 }
-                        },
-                        { 
-                            request_id: 'BR240002', 
-                            created_at: new Date().toISOString(),
-                            hospital_number: 'HN789012',
-                            patient_name: 'Test Patient 2', 
-                            ward_name: 'Emergency', 
-                            status: 'pending',
-                            request_data: { bloodType: 'A+', quantity: 1 }
-                        }
-                    ],
-                    current_page: 1,
-                    total_pages: 1,
-                    total_records: 2
-                };
-            }
-            return {};
-        }
-
-        async function fetchDashboardSummary() {
+        async function fetchDashboardSummary(isBackgroundRefresh = false) {
             const loader = document.getElementById('dashboard-loader');
             const grid = document.getElementById('dashboard-grid');
-            
-            grid.classList.add('hidden');
-            loader.style.display = 'block';
-            
+
+            if (!isBackgroundRefresh) {
+                grid.classList.add('hidden');
+                loader.style.display = 'block';
+            }
+
             try {
                 const data = await fetchAPI('/api/dashboard?action=get_summary');
                 renderDashboard(data);
-                
-                // Check if data has changed
-                const dataHash = JSON.stringify(data);
-                if (lastDataHash.dashboard !== dataHash) {
+                if (isBackgroundRefresh) {
                     animateUpdate('dashboard');
-                    lastDataHash.dashboard = dataHash;
                 }
-                
             } catch (error) {
-                loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
+                console.error('Dashboard fetch error:', error);
+                if (!isBackgroundRefresh) {
+                    loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
+                }
             } finally {
-                grid.classList.remove('hidden');
-                loader.style.display = 'none';
+                if (!isBackgroundRefresh) {
+                    grid.classList.remove('hidden');
+                    loader.style.display = 'none';
+                }
             }
         }
 
-        async function fetchRequests() {
+        async function fetchRequests(isBackgroundRefresh = false) {
             const search = document.getElementById('search-input').value;
             const status = document.getElementById('status-filter').value;
             const tableBody = document.getElementById('requests-table-body');
             const loader = document.getElementById('table-loader');
+
+            if (!isBackgroundRefresh) {
+                tableBody.innerHTML = '';
+                document.getElementById('pagination-controls').innerHTML = '';
+                loader.style.display = 'block';
+            }
             
-            tableBody.innerHTML = '';
-            loader.style.display = 'block';
-            
+            // For background updates on the requests tab, we can store the current IDs to highlight new ones.
+            const existingRequestIds = (isBackgroundRefresh && requestsPage === 1 && !search && !status)
+                ? new Set(Array.from(tableBody.querySelectorAll('tr')).map(tr => tr.cells[0]?.textContent))
+                : null;
+
             try {
-                const data = await fetchAPI(
-                    `/api/dashboard?action=get_requests&page=${requestsPage}&search=${encodeURIComponent(search)}&status=${status}`
-                );
-                renderRequestsTable(data);
+                const data = await fetchAPI(`/api/dashboard?action=get_requests&page=${requestsPage}&search=${encodeURIComponent(search)}&status=${status}`);
+                renderRequestsTable(data, existingRequestIds);
                 renderPagination(data);
-                
-                // Check for new requests
-                const dataHash = JSON.stringify(data.requests);
-                if (lastDataHash.requests && lastDataHash.requests !== dataHash) {
-                    highlightNewRows();
+                if (isBackgroundRefresh) {
+                    animateUpdate('requests');
                 }
-                lastDataHash.requests = dataHash;
-                
             } catch (error) {
-                loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
+                console.error('Requests fetch error:', error);
+                if (!isBackgroundRefresh) {
+                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
+                }
             } finally {
-                loader.style.display = 'none';
+                if (!isBackgroundRefresh) {
+                    loader.style.display = 'none';
+                }
             }
         }
 
         function animateUpdate(section) {
-            const elements = section === 'dashboard' 
+            const elements = section === 'dashboard'
                 ? document.querySelectorAll('#dashboard-grid .stat-card')
-                : [document.getElementById('requests-content')];
+                : [document.querySelector('#requests-content .stat-card')];
             
             elements.forEach(el => {
+                if (!el) return;
                 el.classList.add('updating');
                 setTimeout(() => el.classList.remove('updating'), 1000);
             });
         }
-
-        function highlightNewRows() {
-            const rows = document.querySelectorAll('#requests-table-body tr');
-            rows.forEach((row, index) => {
-                if (index < 3) { // Highlight first 3 rows as potentially new
-                    row.classList.add('new-row');
-                    setTimeout(() => row.classList.remove('new-row'), 3000);
-                }
-            });
-        }
-
+        
         function renderDashboard(data) {
-            // Update stats with animation
-            const todayEl = document.getElementById('stat-today');
-            const submittedEl = document.getElementById('stat-submitted');
-            
-            animateNumberChange(todayEl, data.requests_today || 0);
-            animateNumberChange(submittedEl, data.submitted_count || 0);
+            animateNumberChange(document.getElementById('stat-today'), data.requests_today || 0);
+            animateNumberChange(document.getElementById('stat-submitted'), data.submitted_count || 0);
 
-            // Update recent requests
             const recentList = document.getElementById('recent-requests-list');
-            recentList.innerHTML = data.recent_requests.length > 0 
+            recentList.innerHTML = data.recent_requests.length > 0
                 ? data.recent_requests.map(req => `
                     <tr class="border-b">
                         <td class="p-2 font-mono text-xs">${req.request_id}</td>
                         <td class="p-2">${req.patient_name || '-'}</td>
                         <td class="p-2">${req.ward_name || '-'}</td>
                         <td class="p-2 text-gray-500">${formatDateTime(req.created_at)}</td>
-                    </tr>
-                `).join('')
+                    </tr>`).join('')
                 : '<tr><td colspan="4" class="p-2 text-gray-500">ไม่มีข้อมูลล่าสุด</td></tr>';
 
-            // Update charts
-            renderChart('bloodTypeChart', 'pie', 
-                data.by_blood_type.map(d => d.component_type), 
-                data.by_blood_type.map(d => d.count), 
-                'จำแนกตามประเภทเลือด (ที่ยืนยันแล้ว)'
-            );
-            renderChart('wardChart', 'bar', 
-                data.by_ward.map(d => d.ward_name), 
-                data.by_ward.map(d => d.count), 
-                '10 หอผู้ป่วยที่ขอใช้เลือดสูงสุด (ที่ยืนยันแล้ว)'
-            );
+            renderChart('bloodTypeChart', 'pie', data.by_blood_type.map(d => d.component_type), data.by_blood_type.map(d => d.count), 'จำแนกตามประเภทเลือด (ที่ยืนยันแล้ว)');
+            renderChart('wardChart', 'bar', data.by_ward.map(d => d.ward_name), data.by_ward.map(d => d.count), '10 หอผู้ป่วยที่ขอใช้เลือดสูงสุด (ที่ยืนยันแล้ว)');
         }
 
         function animateNumberChange(element, newValue) {
-            const currentValue = parseInt(element.textContent) || 0;
+            const currentValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
             if (currentValue === newValue) return;
-
-            const duration = 1000;
-            const stepTime = 50;
+            const duration = 500;
+            const stepTime = 20;
             const steps = duration / stepTime;
             const increment = (newValue - currentValue) / steps;
             let current = currentValue;
-
             const timer = setInterval(() => {
                 current += increment;
-                if ((increment > 0 && current >= newValue) || 
-                    (increment < 0 && current <= newValue)) {
-                    element.textContent = newValue;
+                if ((increment > 0 && current >= newValue) || (increment < 0 && current <= newValue)) {
+                    element.textContent = newValue.toLocaleString();
                     clearInterval(timer);
                 } else {
-                    element.textContent = Math.round(current);
+                    element.textContent = Math.round(current).toLocaleString();
                 }
             }, stepTime);
         }
-        
-        function renderRequestsTable(data) {
+
+        function renderRequestsTable(data, existingRequestIds = null) {
             const tableBody = document.getElementById('requests-table-body');
             if (!data.requests || data.requests.length === 0) {
                 tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-500">ไม่พบข้อมูล</td></tr>`;
                 return;
             }
-            
+
             tableBody.innerHTML = data.requests.map(req => {
-                const component = req.request_data?.bloodType 
-                    ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)` 
+                const component = req.request_data?.bloodType
+                    ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)`
                     : req.blood_type || '';
+                const isNew = existingRequestIds ? !existingRequestIds.has(req.request_id) : false;
+                
                 return `
-                <tr class="border-b">
+                <tr class="border-b ${isNew ? 'new-row' : ''}">
                     <td class="p-3 font-mono text-xs">${req.request_id}</td>
                     <td class="p-3">${formatDateTime(req.created_at)}</td>
                     <td class="p-3">${req.hospital_number || '-'}</td>
@@ -606,50 +447,48 @@
 
         function renderPagination(data) {
             const controls = document.getElementById('pagination-controls');
-            if (!data || data.total_records === 0) { 
-                controls.innerHTML = ''; 
-                return; 
+            if (!data || data.total_pages <= 1) {
+                controls.innerHTML = ''; return;
             }
             controls.innerHTML = `
                 <span class="text-sm text-gray-700">
-                    หน้า ${data.current_page} / ${data.total_pages} 
-                    (ทั้งหมด ${data.total_records} รายการ)
+                    หน้า ${data.current_page} / ${data.total_pages} (ทั้งหมด ${data.total_records} รายการ)
                 </span>
                 <div>
-                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''} 
-                        class="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50">
+                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''}
+                        class="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
                         ก่อนหน้า
                     </button>
-                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''} 
-                        class="ml-2 px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-50">
+                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''}
+                        class="ml-2 px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
                         ถัดไป
                     </button>
                 </div>`;
         }
 
-        const changePage = (dir) => { 
-            requestsPage += dir; 
-            fetchRequests(); 
+        function changePage(dir) {
+            requestsPage += dir;
+            fetchRequests();
         };
 
         const getStatusClass = (s) => ({
-            'submitted': 'bg-green-100 text-green-800', 
-            'pending': 'bg-amber-100 text-amber-800', 
+            'submitted': 'bg-green-100 text-green-800',
+            'pending': 'bg-amber-100 text-amber-800',
             'initiated': 'bg-blue-100 text-blue-800'
         }[s] || 'bg-gray-100 text-gray-800');
 
-        const formatDateTime = (iso) => iso 
-            ? new Date(iso).toLocaleString('th-TH', { 
-                day: '2-digit', month: 'short', year: 'numeric', 
+        const formatDateTime = (iso) => iso
+            ? new Date(iso).toLocaleString('th-TH', {
+                day: '2-digit', month: 'short', year: 'numeric',
                 hour: '2-digit', minute: '2-digit'
-            }) 
+            })
             : '-';
 
         const debounce = (fn, delay) => {
-            let t; 
-            return (...args) => { 
-                clearTimeout(t); 
-                t = setTimeout(() => fn(...args), delay); 
+            let t;
+            return (...args) => {
+                clearTimeout(t);
+                t = setTimeout(() => fn(...args), delay);
             };
         };
 
@@ -661,37 +500,28 @@
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'จำนวนคำขอ', 
+                        label: 'จำนวนคำขอ',
                         data: data,
-                        backgroundColor: [
-                            '#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', 
-                            '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'
-                        ],
-                        borderColor: '#fff', 
+                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
+                        borderColor: '#fff',
                         borderWidth: type === 'pie' ? 2 : 0
                     }]
                 },
-                options: { 
-                    responsive: true, 
-                    plugins: { 
-                        legend: { position: type === 'pie' ? 'top' : 'none' }, 
-                        title: { display: true, text: title, font: { size: 16 } } 
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: type === 'pie' ? 'top' : 'none' },
+                        title: { display: true, text: title, font: { size: 16 } }
                     },
-                    animation: {
-                        duration: 1000,
-                        easing: 'easeInOutQuart'
-                    }
+                    animation: { duration: 1000, easing: 'easeInOutQuart' }
                 }
             });
         }
 
-        // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
             if (eventSource) eventSource.close();
+            if (refreshInterval) clearInterval(refreshInterval);
         });
-    </script>
-</body>
-</html>
     </script>
 </body>
 </html>
