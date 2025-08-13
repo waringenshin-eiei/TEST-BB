@@ -2,7 +2,7 @@
 #
 # This single file provides a complete backend solution managing:
 # 1. POST /api/webhook:         Instantaneous replies to the LINE Messaging API.
-# 2. POST /api/submit_request:   Handles form submissions, creates new users on-the-fly, and sends rich reports.
+# 2. POST /api/submit_request:   Handles submissions, creates new users, splits JSON to DB columns, and sends rich reports.
 # 3. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
 #
 # --- Required Libraries ---
@@ -35,6 +35,7 @@ sse_queue = queue.Queue()
 
 # --- Core Logic: Database & Cache ---
 def get_db_connection():
+    """Establishes a connection to the PostgreSQL database."""
     if not POSTGRES_URL: return None
     try:
         return psycopg.connect(POSTGRES_URL)
@@ -43,6 +44,7 @@ def get_db_connection():
         return None
 
 def get_user_profile(line_user_id):
+    """Efficiently retrieves a user's internal UUID from cache or DB."""
     cache_key = f"user_profile:{line_user_id}"
     if redis_client:
         try:
@@ -60,13 +62,11 @@ def get_user_profile(line_user_id):
             cur.execute("SELECT user_id FROM users WHERE line_user_id = %s", (line_user_id,))
             result = cur.fetchone()
 
-    if not result:
-        return None
-
+    if not result: return None
     profile_data = {"user_uuid": str(result[0])}
     if redis_client:
         try:
-            redis_client.set(cache_key, json.dumps(profile_data), ex=86400)
+            redis_client.set(cache_key, json.dumps(profile_data), ex=86400) # Cache for 24 hours
             print(f"CACHE SET for user {line_user_id}")
         except Exception as e:
             print(f"⚠️ Redis SET error: {e}")
@@ -74,6 +74,7 @@ def get_user_profile(line_user_id):
 
 # --- Core Logic: LINE Messaging & Flex Report ---
 def send_line_message(user_id, messages):
+    """Generic function to push a message to a user via the LINE API."""
     if not LINE_TOKEN: return
     try:
         requests.post(
@@ -87,9 +88,7 @@ def send_line_message(user_id, messages):
         print(f"❌ LINE API Error: {e}")
 
 def create_flex_report(report_data):
-    """
-    REFINED: Creates a LINE Flex Message with bilingual labels and fixes the subtype bug.
-    """
+    """Creates a beautiful, color-coded LINE Flex Message JSON object with bilingual labels."""
     blood_type = report_data.get('bloodType', 'unknown').lower()
     color_themes = {
         'redcell': {'main': '#B91C1C', 'light': '#FEF2F2'},
@@ -130,7 +129,7 @@ def create_flex_report(report_data):
                 create_bilingual_row("หอผู้ป่วย", "Ward", report_data.get('wardName')),
                 {"type": "separator", "margin": "lg"},
                 create_bilingual_row("ผลิตภัณฑ์", "Product", report_data.get('bloodType', '').upper(), is_bold=True),
-                create_bilingual_row("ชนิดย่อย", "Subtype", report_data.get('subtype', '-')), # FIX: Use .get() with a default to prevent errors
+                create_bilingual_row("ชนิดย่อย", "Subtype", report_data.get('subtype', '-')),
                 create_bilingual_row("จำนวน", "Quantity", f"{report_data.get('quantity')} Units"),
                 {"type": "separator", "margin": "lg"},
                 create_bilingual_row("รอบส่ง", "Schedule", report_data.get('deliveryTime')),
@@ -143,6 +142,7 @@ def create_flex_report(report_data):
     }
 
 def send_form_link(user_id):
+    """Sends the initial message with a button to open the form."""
     form_url = f"{FORM_BASE_URL}/confirm_usage.html?line_user_id={urllib.parse.quote(user_id)}"
     message = {"type": "template", "altText": "แจ้งเตือนการใช้เลือด", "template": {
             "type": "buttons", "thumbnailImageUrl": "https://storage.googleapis.com/line-flex-images-logriz/blood-request-banner.png",
@@ -152,7 +152,7 @@ def send_form_link(user_id):
         }}
     send_line_message(user_id, message)
 
-# --- SSE Logic ---
+# --- Core Logic: Server-Sent Events (SSE) ---
 def notify_dashboard_update(event_type, data):
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
@@ -229,10 +229,28 @@ class handler(BaseHTTPRequestHandler):
                     if not ward_result: raise ValueError(f"Ward '{selected_ward_name}' not found in directory.")
                     ward_id_for_request = ward_result[0]
                     
-                    cur.execute("""
-                        INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, request_data)
-                        VALUES (%s, %s, %s, 'pending', %s) RETURNING request_id, created_at;
-                    """, (user_profile['user_uuid'], ward_id_for_request, form_data.get('schedule_id'), json.dumps(form_data)))
+                    # Expanded INSERT statement to populate individual columns
+                    sql_insert_request = """
+                        INSERT INTO blood_requests (
+                            user_id, ward_id, schedule_id, status, 
+                            blood_type, patient_name, hospital_number, 
+                            delivery_location, reporter_name, blood_details,
+                            request_data
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                        RETURNING request_id, created_at;
+                    """
+                    
+                    blood_details_str = f"{form_data.get('subtype')} ({form_data.get('quantity')} Units)"
+                    
+                    insert_values = (
+                        user_profile['user_uuid'], ward_id_for_request, form_data.get('schedule_id'), 'pending',
+                        form_data.get('bloodType'), form_data.get('patientName'), form_data.get('hn'),
+                        form_data.get('deliveryLocation'), form_data.get('reporterName'), blood_details_str,
+                        json.dumps(form_data)
+                    )
+                    
+                    cur.execute(sql_insert_request, insert_values)
                     result = cur.fetchone()
                     new_request_id, created_at = str(result[0]), result[1]
                     
