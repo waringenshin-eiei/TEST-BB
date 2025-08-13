@@ -21,7 +21,7 @@ import time
 # Load all credentials and settings from environment variables for security.
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
 LINE_TOKEN = os.environ.get('LINE_TOKEN')
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Change this to your frontend URL
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://test-bb-six.vercel.app') # IMPORTANT: Change this to your frontend URL
 
 # Vercel KV (Redis) Credentials
 KV_URL = os.environ.get('KV_URL')
