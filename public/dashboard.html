@@ -21,31 +21,27 @@
         .loader { border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* New request notification styles */
         .notification-toast { position: fixed; top: 20px; right: 20px; z-index: 1000; transform: translateX(400px); transition: transform 0.3s ease-in-out; }
         .notification-toast.show { transform: translateX(0); }
         .notification-toast.hide { transform: translateX(400px); }
         
-        /* Real-time status indicator */
         .status-indicator { position: relative; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
         .status-indicator.online { background-color: #10b981; animation: pulse 2s infinite; }
         .status-indicator.offline { background-color: #ef4444; }
+        .status-indicator.reconnecting { background-color: #f59e0b; animation: pulse 1s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         
-        /* Update animation for cards */
         .updating { animation: updateGlow 1s ease-in-out; }
         @keyframes updateGlow { 0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); } 50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); } }
         
-        
-        /* New row highlight */
-        .new-row { animation: highlightNew 3s ease-in-out; }
-        @keyframes highlightNew { 0% { background-color: #dcfce7; } 100% { background-color: transparent; } }
-        
-        /* Shake animation for wrong password */
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        /* --- CHANGED: Highlight animation updated to last 60 seconds with new colors --- */
+        .new-row { 
+            animation: highlightNewRow 60s linear; 
+        }
+        @keyframes highlightNewRow {
+            0%   { background-color: #a7f3d0; } /* Start with a vibrant green */
+            15%  { background-color: #fef08a; } /* Fade to yellow over ~10 seconds */
+            100% { background-color: transparent; } /* Fade to transparent over the remaining time */
         }
     </style>
 </head>
@@ -171,24 +167,19 @@
 
         function initializeApp() {
             setupEventListeners();
-            loadInitialData(); // Load initial data on page load
-            setTimeout(setupServerSentEvents, 1000); // Attempt SSE connection after initial load
+            loadInitialData();
+            setTimeout(setupServerSentEvents, 1000);
         }
 
         function setupEventListeners() {
-            // Tab buttons
             document.querySelectorAll('.tab-button').forEach(t => {
                 t.addEventListener('click', () => switchTab(t.dataset.tab));
             });
-
-            // Search input
             const searchInput = document.getElementById('search-input');
             searchInput.addEventListener('input', debounce(() => {
                 requestsPage = 1;
                 fetchRequests();
             }, 500));
-
-            // Status filter
             const statusFilter = document.getElementById('status-filter');
             statusFilter.addEventListener('change', () => {
                 requestsPage = 1;
@@ -205,31 +196,51 @@
             eventSource.onopen = () => {
                 console.log('✅ SSE connected.');
                 updateConnectionStatus(true);
-                if (refreshInterval) clearInterval(refreshInterval); // Stop polling if SSE connects
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
             };
 
             eventSource.onmessage = (event) => {
+                // Ensure status is shown as online when a message is received
+                if (document.getElementById('connection-status').classList.contains('online') === false) {
+                    updateConnectionStatus(true);
+                }
+                // Ignore empty messages or heartbeats without a proper type
+                if (!event.data) return;
                 const data = JSON.parse(event.data);
+                if (data.type === 'heartbeat' || data.type === 'connected') return;
+
                 handleRealTimeUpdate(data);
             };
 
-            eventSource.onerror = () => {
-                console.warn('❌ SSE connection failed. Falling back to polling.');
-                updateConnectionStatus(false);
-                eventSource.close();
-                // Fallback to polling every 30 seconds
-                if (!refreshInterval) {
-                    refreshInterval = setInterval(() => loadInitialData(true), 30000);
+            // --- CHANGED: Smarter error handling ---
+            eventSource.onerror = (err) => {
+                console.warn('SSE connection error. The browser will attempt to reconnect.', err);
+                // The EventSource object's readyState will be CONNECTING while it attempts to reconnect
+                if (eventSource.readyState === EventSource.CONNECTING) {
+                    updateConnectionStatus('reconnecting');
+                } else if (eventSource.readyState === EventSource.CLOSED) {
+                    // If it's permanently closed, then fall back to polling
+                    console.error('❌ SSE connection permanently closed. Falling back to polling.');
+                    updateConnectionStatus(false);
+                    if (!refreshInterval) {
+                        refreshInterval = setInterval(() => loadInitialData(true), 30000);
+                    }
                 }
             };
         }
-
-        function updateConnectionStatus(isOnline) {
+        
+        function updateConnectionStatus(status) {
             const statusIndicator = document.getElementById('connection-status');
             const connectionText = document.getElementById('connection-text');
-            if (isOnline) {
+            if (status === true) {
                 statusIndicator.className = 'status-indicator online';
                 connectionText.textContent = 'เชื่อมต่อแล้ว (Real-time)';
+            } else if (status === 'reconnecting') {
+                statusIndicator.className = 'status-indicator reconnecting';
+                connectionText.textContent = 'กำลังเชื่อมต่อใหม่...';
             } else {
                 statusIndicator.className = 'status-indicator offline';
                 connectionText.textContent = 'เชื่อมต่อล้มเหลว (Polling mode)';
@@ -246,11 +257,10 @@
                 showNotification(`อัพเดทสถานะ: ${data.request_id}`, 'info');
             }
 
-            // Refresh the data for the currently active tab in the background
             if (currentTab === 'dashboard') {
-                fetchDashboardSummary(true); // Pass true for background refresh
+                fetchDashboardSummary(true);
             } else if (currentTab === 'requests') {
-                fetchRequests(true); // Pass true for background refresh
+                fetchRequests(true);
             }
         }
         
@@ -341,7 +351,6 @@
                 loader.style.display = 'block';
             }
             
-            // For background updates on the requests tab, we can store the current IDs to highlight new ones.
             const existingRequestIds = (isBackgroundRefresh && requestsPage === 1 && !search && !status)
                 ? new Set(Array.from(tableBody.querySelectorAll('tr')).map(tr => tr.cells[0]?.textContent))
                 : null;
@@ -504,7 +513,7 @@
                         data: data,
                         backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
                         borderColor: '#fff',
-                        borderWidth: type === 'pie' ? 2 : 0
+                        borderWidth: type === 'pie' ? 2 : 1
                     }]
                 },
                 options: {
