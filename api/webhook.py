@@ -159,7 +159,7 @@ def send_blood_usage_menu(user_id):
 
 def send_blood_form_link(user_id, request_id):
     """Sends a message with a button linking to the web form."""
-    form_url = f"https://blood-bag-system.vercel.app/confirm_usage.html?request_id={urllib.parse.quote(request_id)}"
+    form_url = f"https://test-bb-six.vercel.app/confirm_usage.html?request_id={urllib.parse.quote(request_id)}"
     
     message = {
         "type": "template", "altText": "กรุณากรอกข้อมูลการใช้เลือด",
