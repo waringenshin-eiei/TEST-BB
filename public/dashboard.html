@@ -190,19 +190,28 @@
             const CORRECT_PASSWORD = "FLUKEE1112";
 
             const checkPassword = () => {
-                if (passwordInput.value === CORRECT_PASSWORD) {
+                const enteredPassword = passwordInput.value.trim();
+                console.log('Entered password:', enteredPassword); // Debug log
+                console.log('Expected password:', CORRECT_PASSWORD); // Debug log
+                console.log('Match:', enteredPassword === CORRECT_PASSWORD); // Debug log
+                
+                if (enteredPassword === CORRECT_PASSWORD) {
                     protectionDiv.style.display = 'none';
                     initializeApp();
                 } else {
-                    errorP.innerText = 'Incorrect Password!';
+                    errorP.innerText = `Incorrect Password! (Entered: "${enteredPassword}")`;
                     passwordInput.value = '';
                     passwordInput.focus();
                 }
             };
+            
             submitButton.addEventListener('click', checkPassword);
             passwordInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') checkPassword();
             });
+            
+            // For debugging - remove this in production
+            console.log('Password protection setup complete. Expected password:', CORRECT_PASSWORD);
         }
         
         function initializeApp() {
