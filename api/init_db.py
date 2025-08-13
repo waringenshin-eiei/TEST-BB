@@ -1,4 +1,4 @@
-# api/init_db.py - Refined with schedules and robust data seeding
+# api/init_db.py - Optimized for Performance and Scalability
 from http.server import BaseHTTPRequestHandler
 import json
 import os
@@ -46,24 +46,39 @@ class handler(BaseHTTPRequestHandler):
                 
                 # --- Schema Definitions ---
                 commands = [
+                    # OPTIMIZATION: Use UUID for non-sequential, unique IDs.
+                    # This is better for distributed systems and security than VARCHAR.
+                    """
+                    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+                    """,
+                    # OPTIMIZATION: Use ENUM types for fixed sets of values (e.g., statuses).
+                    # This improves data integrity and is more space-efficient than VARCHAR.
+                    """
+                    DO $$ BEGIN
+                        CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended');
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END $$;
+                    """,
+                    """
+                    DO $$ BEGIN
+                        CREATE TYPE request_status AS ENUM ('pending', 'confirmed', 'in_progress', 'delivered', 'cancelled');
+                    EXCEPTION
+                        WHEN duplicate_object THEN null;
+                    END $$;
+                    """,
                     """
                     CREATE TABLE IF NOT EXISTS users (
-                        user_id VARCHAR(255) PRIMARY KEY,
-                        status VARCHAR(50) DEFAULT 'active',
+                        user_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        line_user_id VARCHAR(255) UNIQUE NOT NULL, -- The external ID from LINE
+                        status user_status DEFAULT 'active',
                         first_seen TIMESTAMPTZ DEFAULT NOW(),
                         last_activity TIMESTAMPTZ DEFAULT NOW()
                     );
                     """,
                     """
-                    -- Stores the association between a LINE User ID and a ward name
-                    CREATE TABLE IF NOT EXISTS ward_id (
-                        user_id VARCHAR(255) PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-                        name VARCHAR(255) NOT NULL UNIQUE,
-                        is_active BOOLEAN DEFAULT TRUE
-                    );
-                    """,
-                    """
-                    -- A canonical list of all valid ward names for form validation and dropdowns
+                    -- A canonical list of all valid ward names.
+                    -- This is our central source of truth for wards.
                     CREATE TABLE IF NOT EXISTS ward_directory (
                         ward_id SERIAL PRIMARY KEY,
                         ward_name VARCHAR(255) UNIQUE NOT NULL,
@@ -71,47 +86,100 @@ class handler(BaseHTTPRequestHandler):
                     );
                     """,
                     """
-                    -- REFINEMENT: Added table for dynamic delivery schedules
+                    -- Stores user-specific settings, like their primary ward.
+                    -- Renamed from 'ward_id' for clarity.
+                    CREATE TABLE IF NOT EXISTS user_profiles (
+                        user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+                        -- OPTIMIZATION: Use an integer foreign key to the ward directory.
+                        primary_ward_id INTEGER REFERENCES ward_directory(ward_id),
+                        reporter_name VARCHAR(255)
+                    );
+                    """,
+                    """
+                    -- A canonical list of all valid delivery schedules.
                     CREATE TABLE IF NOT EXISTS delivery_schedules (
                         schedule_id SERIAL PRIMARY KEY,
-                        delivery_time VARCHAR(10) UNIQUE NOT NULL,
+                        delivery_time VARCHAR(10) UNIQUE NOT NULL, -- Keeping VARCHAR for "10.00น." format
                         is_active BOOLEAN DEFAULT TRUE
                     );
                     """,
                     """
+                    -- The main transactional table for blood requests.
                     CREATE TABLE IF NOT EXISTS blood_requests (
-                        request_id VARCHAR(50) PRIMARY KEY,
-                        user_id VARCHAR(255) REFERENCES users(user_id),
+                        request_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                        user_id UUID NOT NULL REFERENCES users(user_id),
+                        -- OPTIMIZATION: Use integer foreign keys for faster joins and data integrity.
+                        ward_id INTEGER NOT NULL REFERENCES ward_directory(ward_id),
+                        schedule_id INTEGER NOT NULL REFERENCES delivery_schedules(schedule_id),
+                        
                         blood_type VARCHAR(50),
                         patient_name VARCHAR(255),
                         hospital_number VARCHAR(100),
-                        ward_name VARCHAR(255),
                         blood_details TEXT,
-                        delivery_time VARCHAR(50),
-                        delivery_location VARCHAR(255),
+                        delivery_location VARCHAR(255), -- Could be different from the ward
                         reporter_name VARCHAR(255),
-                        status VARCHAR(50) DEFAULT 'pending',
+                        status request_status DEFAULT 'pending',
                         request_data JSONB,
                         created_at TIMESTAMPTZ DEFAULT NOW(),
-                        updated_at TIMESTAMPTZ
+                        updated_at TIMESTAMPTZ DEFAULT NOW() -- Will be managed by a trigger
                     );
                     """,
                     """
+                    -- Child table for the components of a single blood request.
                     CREATE TABLE IF NOT EXISTS blood_components (
                         component_id SERIAL PRIMARY KEY,
-                        request_id VARCHAR(50) REFERENCES blood_requests(request_id) ON DELETE CASCADE,
+                        request_id UUID NOT NULL REFERENCES blood_requests(request_id) ON DELETE CASCADE,
                         component_type VARCHAR(50) NOT NULL,
                         quantity INTEGER,
                         component_subtype VARCHAR(100),
                         properties JSONB
                     );
+                    """,
+                    # --- INDEXING FOR PERFORMANCE ---
+                    # Indexes on foreign keys and frequently queried columns are critical for speed.
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_users_line_user_id ON users(line_user_id);
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_blood_requests_user_id ON blood_requests(user_id);
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_blood_requests_status ON blood_requests(status);
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_blood_requests_created_at ON blood_requests(created_at DESC);
+                    """,
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_blood_components_request_id ON blood_components(request_id);
+                    """,
+                    # OPTIMIZATION: Add a GIN index for fast searching within the JSONB data.
+                    """
+                    CREATE INDEX IF NOT EXISTS idx_blood_requests_request_data_gin ON blood_requests USING GIN(request_data);
+                    """,
+                    
+                    # --- TRIGGER for automatically updating 'updated_at' timestamp ---
+                    """
+                    CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+                    RETURNS TRIGGER AS $$
+                    BEGIN
+                      NEW.updated_at = NOW();
+                      RETURN NEW;
+                    END;
+                    $$ LANGUAGE plpgsql;
+                    """,
+                    """
+                    DROP TRIGGER IF EXISTS set_timestamp ON blood_requests;
+                    CREATE TRIGGER set_timestamp
+                    BEFORE UPDATE ON blood_requests
+                    FOR EACH ROW
+                    EXECUTE PROCEDURE trigger_set_timestamp();
                     """
                 ]
 
                 # Execute all schema creation commands
                 for command in commands:
                     cur.execute(command)
-                print("INFO: All tables created or verified successfully.")
+                print("INFO: All tables, types, indexes, and triggers created or verified successfully.")
 
                 # Populate tables with default data
                 self.insert_default_data(cur)
@@ -138,7 +206,7 @@ class handler(BaseHTTPRequestHandler):
         ]
         insert_ward_sql = "INSERT INTO ward_directory (ward_name) VALUES (%s) ON CONFLICT (ward_name) DO NOTHING;"
         cur.executemany(insert_ward_sql, wards_data)
-        print(f"INFO: {cur.rowcount} new wards inserted into directory.")
+        print(f"INFO: Verified {len(wards_data)} wards. {cur.rowcount} new wards inserted.")
 
         # --- Default Delivery Schedule Data ---
         delivery_times = [
@@ -147,4 +215,4 @@ class handler(BaseHTTPRequestHandler):
         ]
         insert_schedule_sql = "INSERT INTO delivery_schedules (delivery_time) VALUES (%s) ON CONFLICT (delivery_time) DO NOTHING;"
         cur.executemany(insert_schedule_sql, delivery_times)
-        print(f"INFO: {cur.rowcount} new delivery schedules inserted.")
+        print(f"INFO: Verified {len(delivery_times)} delivery schedules. {cur.rowcount} new schedules inserted.")
