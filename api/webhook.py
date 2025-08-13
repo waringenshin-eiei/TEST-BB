@@ -1,6 +1,10 @@
-# api/webhook.py - Final Production-Ready Handler
-# Architecture: High-speed, decoupled, with Redis caching, SSE, and rich Flex Message reports.
-
+# api/webhook.py - Final, Complete, and Integrated Production-Ready Handler
+#
+# This single file provides a complete backend solution managing:
+# 1. POST /api/webhook:         Instantaneous replies to the LINE Messaging API.
+# 2. POST /api/submit_request:   Handles form submissions, database operations, and sends rich reports.
+# 3. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
+#
 # --- Required Libraries ---
 # pip install requests psycopg[binary] redis
 
@@ -20,7 +24,7 @@ import traceback
 # --- Configuration ---
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
 LINE_TOKEN = os.environ.get('LINE_TOKEN')
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # Replace with your actual frontend URL
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Set this in your environment
 KV_URL = os.environ.get('KV_URL')
 
 # --- Constants & Globals ---
@@ -40,7 +44,7 @@ def get_db_connection():
         return None
 
 def get_user_profile(line_user_id):
-    """Efficiently retrieves a user's profile from cache or DB."""
+    """Efficiently retrieves a user's internal UUID from cache or DB."""
     cache_key = f"user_profile:{line_user_id}"
     if redis_client:
         try:
@@ -55,19 +59,14 @@ def get_user_profile(line_user_id):
     with get_db_connection() as conn:
         if not conn: return None
         with conn.cursor() as cur:
-            cur.execute("""
-                SELECT u.user_id, up.primary_ward_id
-                FROM users u
-                LEFT JOIN user_profiles up ON u.user_id = up.user_id
-                WHERE u.line_user_id = %s
-            """, (line_user_id,))
+            cur.execute("SELECT user_id FROM users WHERE line_user_id = %s", (line_user_id,))
             result = cur.fetchone()
 
     if not result:
         print(f"❌ User with line_user_id {line_user_id} not found in DB.")
         return None
 
-    profile_data = {"user_uuid": str(result[0]), "ward_id": result[1]}
+    profile_data = {"user_uuid": str(result[0])}
     if redis_client:
         try:
             redis_client.set(cache_key, json.dumps(profile_data), ex=86400) # Cache for 24 hours
@@ -146,7 +145,7 @@ def send_form_link(user_id):
         }}
     send_line_message(user_id, message)
 
-# --- SSE Logic ---
+# --- Core Logic: Server-Sent Events (SSE) ---
 def notify_dashboard_update(event_type, data):
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
@@ -175,7 +174,7 @@ if not sse_thread.is_alive():
 # --- Main HTTP Handler ---
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
-        """Routes POST requests to the correct handler."""
+        """Routes POST requests to the correct handler based on the path."""
         if self.path == '/api/webhook':
             self.handle_line_webhook()
         elif self.path == '/api/submit_request':
@@ -203,10 +202,10 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"❌ Webhook error: {e}")
         finally:
-            self._send_response(200, {}) # Send empty JSON body
+            self._send_response(200, {})
 
     def handle_form_submission(self):
-        """Handles the main form submission, DB writing, and sending the Flex report."""
+        """Handles form submission, DB writing, and sending the Flex report."""
         try:
             form_data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
             line_user_id = form_data.get('line_user_id')
@@ -218,18 +217,30 @@ class handler(BaseHTTPRequestHandler):
             with get_db_connection() as conn:
                 if not conn: raise ConnectionError("Database connection failed")
                 with conn.cursor() as cur:
+                    # FIX: Look up the integer ward_id from the string wardName sent by the form.
+                    selected_ward_name = form_data.get('wardName')
+                    if not selected_ward_name: raise ValueError("Ward Name from form is required")
+                    
+                    cur.execute("SELECT ward_id FROM ward_directory WHERE ward_name = %s", (selected_ward_name,))
+                    ward_result = cur.fetchone()
+                    if not ward_result: raise ValueError(f"Ward '{selected_ward_name}' not found in directory.")
+                    ward_id_for_request = ward_result[0]
+                    
+                    # Insert the main request and get the new UUID
                     cur.execute("""
                         INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, request_data)
                         VALUES (%s, %s, %s, 'pending', %s) RETURNING request_id, created_at;
-                    """, (user_profile['user_uuid'], user_profile['ward_id'], form_data.get('schedule_id'), json.dumps(form_data)))
+                    """, (user_profile['user_uuid'], ward_id_for_request, form_data.get('schedule_id'), json.dumps(form_data)))
                     result = cur.fetchone()
                     new_request_id, created_at = str(result[0]), result[1]
                     
+                    # Insert component details
                     cur.execute("""
                         INSERT INTO blood_components (request_id, component_type, quantity, component_subtype)
                         VALUES (%s, %s, %s, %s)
                     """, (new_request_id, form_data.get('bloodType'), form_data.get('quantity'), form_data.get('subtype')))
                     conn.commit()
+            
             print(f"✅ DB insert successful for new request {new_request_id}")
 
             report_data = {**form_data, "request_id": new_request_id}
@@ -261,30 +272,25 @@ class handler(BaseHTTPRequestHandler):
         print(f"➕ SSE client connected. Total clients: {len(sse_clients)}")
 
         try:
-            # Send an initial connection confirmation
             initial_message = json.dumps({'type': 'connected', 'message': 'Connection established'})
             self.wfile.write(f"data: {initial_message}\n\n".encode('utf-8'))
             self.wfile.flush()
 
             while True:
                 try:
-                    # Block and wait for a message from the worker, with a 25s timeout
                     message = client_queue.get(timeout=25)
                     self.wfile.write(f"data: {message}\n\n".encode('utf-8'))
                     self.wfile.flush()
                 except queue.Empty:
-                    # No new message, send a heartbeat to keep the connection alive
                     heartbeat = json.dumps({'type': 'heartbeat', 'timestamp': datetime.now(THAILAND_TZ).isoformat()})
                     self.wfile.write(f"data: {heartbeat}\n\n".encode('utf-8'))
                     self.wfile.flush()
         
         except (IOError, BrokenPipeError, ConnectionResetError) as e:
-            # This is the expected way a client disconnects
             print(f"🔌 SSE client disconnected gracefully: {e}")
         except Exception as e:
             print(f"❌ Unhandled SSE error: {e}")
         finally:
-            # CRITICAL: Always remove the client's queue on disconnection
             if client_queue in sse_clients:
                 sse_clients.remove(client_queue)
             print(f"➖ SSE client removed. Total clients: {len(sse_clients)}")
