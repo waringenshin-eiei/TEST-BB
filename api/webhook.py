@@ -88,7 +88,9 @@ def send_line_message(user_id, messages):
         print(f"❌ LINE API Error: {e}")
 
 def create_flex_report(report_data):
-    """Creates a beautiful, color-coded LINE Flex Message JSON object with bilingual labels."""
+    """
+    REFINED: Creates a LINE Flex Message with bilingual labels, bold patient info, and full date.
+    """
     blood_type = report_data.get('bloodType', 'unknown').lower()
     color_themes = {
         'redcell': {'main': '#B91C1C', 'light': '#FEF2F2'},
@@ -125,7 +127,8 @@ def create_flex_report(report_data):
                 ]},
                 {"type": "separator", "margin": "lg"},
                 create_bilingual_row("Request ID", "Request ID", report_data.get('request_id'), is_bold=True),
-                create_bilingual_row("ผู้ป่วย", "Patient", f"{report_data.get('patientName')} (HN: {report_data.get('hn')})"),
+                # FIX: Set is_bold=True for the patient info row
+                create_bilingual_row("ผู้ป่วย", "Patient", f"{report_data.get('patientName')} (HN: {report_data.get('hn')})", is_bold=True),
                 create_bilingual_row("หอผู้ป่วย", "Ward", report_data.get('wardName')),
                 {"type": "separator", "margin": "lg"},
                 create_bilingual_row("ผลิตภัณฑ์", "Product", report_data.get('bloodType', '').upper(), is_bold=True),
@@ -136,7 +139,8 @@ def create_flex_report(report_data):
                 create_bilingual_row("สถานที่", "Location", report_data.get('deliveryLocation')),
                 create_bilingual_row("ผู้แจ้ง", "Reporter", report_data.get('reporterName')),
                 {"type": "separator", "margin": "lg"},
-                {"type": "text", "text": f"บันทึกเมื่อ: {datetime.now(THAILAND_TZ).strftime('%d %b %Y, %H:%M')}", "wrap": True, "size": "xxs", "color": "#AAAAAA", "align": "center"}
+                # FIX: Use a format that clearly shows both Date and Time
+                {"type": "text", "text": f"บันทึกเมื่อ (Date): {datetime.now(THAILAND_TZ).strftime('%d %b %Y, %H:%M')}", "wrap": True, "size": "xxs", "color": "#AAAAAA", "align": "center"}
             ]}
         }
     }
@@ -229,7 +233,6 @@ class handler(BaseHTTPRequestHandler):
                     if not ward_result: raise ValueError(f"Ward '{selected_ward_name}' not found in directory.")
                     ward_id_for_request = ward_result[0]
                     
-                    # Expanded INSERT statement to populate individual columns
                     sql_insert_request = """
                         INSERT INTO blood_requests (
                             user_id, ward_id, schedule_id, status, 
