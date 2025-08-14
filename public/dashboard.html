@@ -6,307 +6,248 @@
     <title>Blood Request Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Pre-compiled Tailwind CSS */
-        *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::before,::after{--tw-content:''}html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Sarabun,sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type='button'],[type='reset'],[type='submit']{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type='search']{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button, [role="button"]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }
-        
-        /* Enhanced Custom Styles */
-        body { 
-            font-family: 'Sarabun', sans-serif; 
-            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-            min-height: 100vh;
+        /* --- Basic Reset & Global Styles --- */
+        *, ::before, ::after {
+            box-sizing: border-box;
+            border-width: 0;
+            border-style: solid;
+            border-color: #e5e7eb;
         }
-        
-        /* Header styles */
-        .header-glow {
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        html {
+            line-height: 1.5;
+            -webkit-text-size-adjust: 100%;
+            font-family: 'Sarabun', sans-serif;
         }
-        
-        /* Connection status */
-        .status-connected { 
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        body {
+            margin: 0;
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f8f9fa; /* Simple light background */
+            color: #212529;
+            padding: 1.5rem;
         }
-        .status-connecting { 
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+
+        /* --- Page Header --- */
+        .page-header {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
         }
-        .status-disconnected { 
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #343a40;
         }
-        
-        /* Component pills - larger and more prominent */
-        .component-pill { 
-            padding: 12px 20px; 
-            border-radius: 16px; 
-            font-weight: 700; 
-            color: white; 
-            text-align: center; 
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            font-size: 1rem;
-            min-width: 120px;
+        .page-header p {
+            color: #6c757d;
+        }
+        #connection-status span {
+            font-weight: 600;
+        }
+        .status-dot {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
             display: inline-block;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-            border: 3px solid transparent;
         }
-        
-        .component-redcell { 
-            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            border-color: #fca5a5;
-            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
-        }
-        .component-ffp { 
-            background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
-            border-color: #fcd34d;
-            box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
-        }
-        .component-cryoprecipitate { 
-            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            border-color: #7dd3fc;
-            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
-        }
-        .component-unknown { 
-            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.4);
-        }
-        
-        /* Status pills - removed submitted */
-        .status-pill { 
-            padding: 8px 16px; 
-            border-radius: 20px; 
-            font-weight: 600; 
-            font-size: 0.8rem; 
-            text-transform: uppercase; 
-            letter-spacing: 0.8px;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-            min-width: 120px;
+        .status-connected { background-color: #28a745; }
+        .status-connecting { background-color: #ffc107; }
+        .status-disconnected { background-color: #dc3545; }
+
+        /* --- Stat Cards --- */
+        .stat-card {
+            background-color: #f8f9fa;
+            border-radius: 0.375rem;
+            padding: 1rem;
             text-align: center;
+            border: 1px solid #e9ecef;
         }
-        
-        .status-pending { 
-            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
-            color: #92400e; 
-            border-color: #f59e0b;
-        }
-        .status-in_progress { 
-            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
-            color: #3730a3; 
-            border-color: #6366f1;
-        }
-        .status-delivered { 
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); 
-            color: #166534; 
-            border-color: #22c55e;
-        }
-        .status-cancelled { 
-            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
-            color: #991b1b; 
-            border-color: #ef4444;
-        }
-        
-        /* Table styles */
-        .dashboard-table {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-        }
-        
-        .table-header {
-            background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
-            color: white;
+        .stat-card .count {
+            font-size: 1.75rem;
             font-weight: 700;
+        }
+        .stat-card .label {
+            font-size: 0.875rem;
+            color: #6c757d;
             text-transform: uppercase;
-            letter-spacing: 1px;
         }
-        
-        .table-row {
-            transition: all 0.3s ease;
-            border-bottom: 1px solid #e2e8f0;
+
+        /* --- Search Bar --- */
+        #hn-search {
+            width: 100%;
+            max-width: 400px;
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            border: 1px solid #ced4da;
+            font-size: 1rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
         }
-        .table-row:hover {
-            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        #hn-search:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
-        
-        /* New request animation */
-        @keyframes slideInNew {
-            0% { 
-                opacity: 0; 
-                transform: translateY(-30px) scale(0.9);
-                background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            }
-            50% {
-                opacity: 1;
-                transform: translateY(0) scale(1.02);
-                background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-            }
-            100% { 
-                opacity: 1; 
-                transform: translateY(0) scale(1);
-                background: white;
-            }
+
+        /* --- Main Table Container --- */
+        .table-container {
+            background: #ffffff;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        
-        .new-row { 
-            animation: slideInNew 1.5s ease-out;
-            border-left: 5px solid #22c55e !important;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
         }
-        
-        /* Patient info styling */
-        .patient-info {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+
+        /* --- Table Header --- */
+        thead {
+            background-color: #f8f9fa;
+            color: #495057;
+            font-weight: 600;
+            font-size: 0.875rem;
         }
-        .patient-name {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #1e293b;
+        th {
+            padding: 1rem;
+            border-bottom: 2px solid #dee2e6;
         }
-        .patient-hn {
+
+        /* --- Table Body & Rows --- */
+        tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        tbody tr:last-child {
+            border-bottom: none;
+        }
+        tbody tr:hover {
+            background-color: #f1f3f5;
+        }
+        td {
+            padding: 1rem;
+            vertical-align: middle;
+            color: #495057;
+        }
+        .hn-cell {
             font-family: 'Courier New', monospace;
-            background: #f1f5f9;
-            color: #475569;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.85rem;
+            font-weight: 600;
+            color: #0d6efd;
+        }
+        
+        /* --- Component & Status Pills (Simplified) --- */
+        .pill {
+            padding: 0.35em 0.8em;
+            border-radius: 0.25rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-align: center;
             display: inline-block;
-            border: 1px solid #cbd5e1;
+            min-width: 100px;
         }
-        
-        /* Details styling */
-        .blood-details {
-            background: #f8fafc;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border-left: 4px solid #3b82f6;
+        .component-redcell { background-color: #fde8e8; color: #9b1c1c; }
+        .component-ffp { background-color: #fffbeb; color: #92400e; }
+        .component-cryoprecipitate { background-color: #e0f2fe; color: #0c4a6e; }
+        .component-unknown { background-color: #e2e8f0; color: #334155; }
+
+        .status-select {
+            border: 1px solid;
+            padding: 0.35em 0.8em;
+            border-radius: 0.25rem;
             font-weight: 600;
+            font-size: 0.8rem;
+            min-width: 120px;
+            cursor: pointer;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-repeat: no-repeat;
+            background-position: right 0.5rem center;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+            padding-right: 2rem;
         }
-        
-        /* Delivery info */
-        .delivery-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .delivery-location {
-            font-weight: 600;
-            color: #1e293b;
-        }
-        .delivery-time {
-            color: #0369a1;
-            font-weight: 700;
-            font-size: 0.9rem;
-        }
-        
-        /* Time indicators */
-        .time-fresh { color: #059669; font-weight: 600; }
+        .status-pending { background-color: #fffbeb; color: #713f12; border-color: #fcd34d; }
+        .status-in_progress { background-color: #eef2ff; color: #3730a3; border-color: #a5b4fc; }
+        .status-delivered { background-color: #f0fdf4; color: #15803d; border-color: #86efac; }
+        .status-cancelled { background-color: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+        /* --- Time indicators --- */
+        .time-fresh { color: #16a34a; font-weight: 600; }
         .time-recent { color: #0ea5e9; font-weight: 500; }
         .time-old { color: #64748b; }
-        
-        /* Notification styles */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 16px 24px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-            font-weight: 600;
+
+        /* --- New Row Highlight --- */
+        @keyframes fadeInHighlight {
+            from { background-color: #d1e7dd; }
+            to { background-color: transparent; }
         }
-        .notification.show {
-            transform: translateX(0);
+        .new-row-highlight {
+            animation: fadeInHighlight 2s ease-out;
         }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .component-pill {
-                padding: 8px 12px;
-                font-size: 0.8rem;
-                min-width: 100px;
-            }
-            .patient-name {
-                font-size: 1rem;
-            }
-        }
+
+        /* --- Utility Classes --- */
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-4 { gap: 1rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .text-center { text-align: center; }
+        .grid { display: grid; }
+        .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <header class="header-glow text-white rounded-xl p-6 mb-8">
-            <div class="flex justify-between items-center">
+<body>
+    <div style="max-width: 1280px; margin: auto;">
+        
+        <header class="page-header">
+            <div class="flex justify-between items-center mb-6">
                 <div>
-                    <h1 class="text-4xl font-bold mb-2">🩸 Blood Request Dashboard</h1>
-                    <p class="text-slate-300 text-lg">Real-time monitoring • Hospital Blood Bank</p>
+                    <h1>🩸 Blood Request Dashboard</h1>
+                    <p>Real-time monitoring • Hospital Blood Bank</p>
                 </div>
-                <div id="connection-status" class="flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full">
-                    <div class="w-5 h-5 rounded-full status-connecting"></div>
+                <div id="connection-status" class="flex items-center gap-2">
+                    <div class="status-dot status-connecting"></div>
                     <span>Connecting...</span>
                 </div>
             </div>
-            
-            <!-- Stats -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
-                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
-                    <div class="text-2xl font-bold" id="pending-count">0</div>
-                    <div class="text-sm text-slate-300">Pending</div>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
-                    <div class="text-2xl font-bold" id="active-count">0</div>
-                    <div class="text-sm text-slate-300">In Progress</div>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
-                    <div class="text-2xl font-bold" id="delivered-count">0</div>
-                    <div class="text-sm text-slate-300">Delivered</div>
-                </div>
-                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
-                    <div class="text-2xl font-bold" id="total-count">0</div>
-                    <div class="text-sm text-slate-300">Total Today</div>
-                </div>
+            <div class="grid grid-cols-4 gap-4">
+                <div class="stat-card"><div class="count" id="pending-count">0</div><div class="label">Pending</div></div>
+                <div class="stat-card"><div class="count" id="active-count">0</div><div class="label">In Progress</div></div>
+                <div class="stat-card"><div class="count" id="delivered-count">0</div><div class="label">Delivered</div></div>
+                <div class="stat-card"><div class="count" id="total-count">0</div><div class="label">Total Today</div></div>
             </div>
         </header>
 
-        <!-- Main Table -->
-        <main class="dashboard-table">
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left">
-                    <thead class="table-header">
+        <div class="mb-4">
+            <input type="search" id="hn-search" placeholder="🔍 Search by HN...">
+        </div>
+
+        <main class="table-container">
+            <div style="overflow-x: auto;">
+                <table id="requests-table">
+                    <thead>
                         <tr>
-                            <th scope="col" class="px-6 py-4 w-1/6">Patient & HN</th>
-                            <th scope="col" class="px-6 py-4 w-1/8 text-center">Component</th>
-                            <th scope="col" class="px-6 py-4 w-1/6">Details</th>
-                            <th scope="col" class="px-6 py-4 w-1/8">Ward</th>
-                            <th scope="col" class="px-6 py-4 w-1/6">Delivery</th>
-                            <th scope="col" class="px-6 py-4 w-1/8 text-center">Status</th>
-                            <th scope="col" class="px-6 py-4 w-1/8">Requested</th>
-                            <th scope="col" class="px-6 py-4 w-1/8">Updated</th>
+                            <th>HN</th>
+                            <th>Patient Name</th>
+                            <th class="text-center">Component</th>
+                            <th>Details</th>
+                            <th>Ward</th>
+                            <th>Delivery</th>
+                            <th class="text-center">Status</th>
+                            <th>Requested</th>
+                            <th>Updated</th>
                         </tr>
                     </thead>
                     <tbody id="requests-table-body">
-                        <!-- Rows will be inserted here -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
         </main>
     </div>
-
-    <!-- Notification container -->
-    <div id="notification-container"></div>
 
     <script>
         const API_BASE_URL = '/api';
@@ -316,7 +257,28 @@
         document.addEventListener('DOMContentLoaded', () => {
             fetchInitialData();
             connectToSSE();
+
+            const searchInput = document.getElementById('hn-search');
+            searchInput.addEventListener('input', filterTableByHN);
         });
+
+        function filterTableByHN() {
+            const searchQuery = document.getElementById('hn-search').value.toLowerCase().trim();
+            const tableBody = document.getElementById('requests-table-body');
+            const rows = tableBody.getElementsByTagName('tr');
+
+            for (const row of rows) {
+                const hnCell = row.cells[0]; // First column is HN
+                if (hnCell) {
+                    const hnValue = (hnCell.textContent || hnCell.innerText).toLowerCase();
+                    if (hnValue.includes(searchQuery)) {
+                        row.style.display = "";
+                    } else {
+                        row.style.display = "none";
+                    }
+                }
+            }
+        }
 
         async function fetchInitialData() {
             try {
@@ -335,16 +297,10 @@
                 });
                 
                 updateStats();
-                showNotification('📊 Dashboard loaded successfully', 'success');
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 const tableBody = document.getElementById('requests-table-body');
-                tableBody.innerHTML = `
-                    <tr><td colspan="8" class="text-center p-12">
-                        <div class="text-red-500 font-bold text-xl mb-2">⚠️ Failed to load requests</div>
-                        <div class="text-slate-500">Check API connection and try refreshing</div>
-                    </td></tr>
-                `;
+                tableBody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 3rem;">⚠️ Failed to load requests. Please check connection.</td></tr>`;
             }
         }
 
@@ -353,49 +309,36 @@
             const eventSource = new EventSource(`${API_BASE_URL}/sse-updates`);
 
             eventSource.onopen = () => {
-                console.log("SSE Connection Opened");
-                statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-connected"></div><span>🟢 Live</span>`;
+                statusDiv.innerHTML = `<div class="status-dot status-connected"></div><span>Live</span>`;
             };
 
             eventSource.onerror = () => {
-                console.error("SSE Connection Error. Reconnecting...");
-                statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-disconnected"></div><span>🔴 Reconnecting...</span>`;
+                statusDiv.innerHTML = `<div class="status-dot status-disconnected"></div><span>Reconnecting...</span>`;
                 eventSource.close();
                 setTimeout(connectToSSE, 5000);
             };
 
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                console.log("SSE Message Received:", data);
-
                 if (data.type === 'new_request') {
                     handleNewRequest(data);
-                    showNotification('🆕 New blood request received!', 'success');
-                    playNotificationSound();
                 } else if (data.type === 'status_update' && !isManualStatusUpdate) {
-                    // Only handle SSE status updates if they weren't triggered by this client
                     handleStatusUpdate(data);
-                    showNotification('🔄 Request status updated', 'info');
                 }
             };
         }
 
         function handleNewRequest(requestData) {
             const tableBody = document.getElementById('requests-table-body');
-            const existingRow = document.getElementById(`request-${requestData.request_id}`);
-            if (existingRow) return;
+            if (document.getElementById(`request-${requestData.request_id}`)) return;
 
             const row = createRequestRow(requestData);
-            row.classList.add('new-row');
+            row.classList.add('new-row-highlight');
             tableBody.prepend(row);
             
             currentRequests.set(requestData.request_id, requestData);
             updateStats();
-
-            // Remove highlight after animation
-            setTimeout(() => {
-                row.classList.remove('new-row');
-            }, 3000);
+            filterTableByHN(); // Ensure new row is visible if it matches search
         }
 
         function handleStatusUpdate(updateData) {
@@ -408,24 +351,20 @@
             statusCell.innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
             lastUpdateCell.innerHTML = formatDateTimeWithClass(updateData.updated_at);
             
-            // Re-attach event listener
-            row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
+            row.querySelector('.status-select').addEventListener('change', handleStatusChange);
             
-            // Update local cache
             if (currentRequests.has(updateData.request_id)) {
                 const request = currentRequests.get(updateData.request_id);
                 request.status = updateData.status;
                 request.updated_at = updateData.updated_at;
                 currentRequests.set(updateData.request_id, request);
             }
-            
             updateStats();
         }
 
         function createRequestRow(request) {
             const row = document.createElement('tr');
             row.id = `request-${request.request_id}`;
-            row.className = 'table-row';
 
             const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
             
@@ -438,40 +377,29 @@
             const bloodDetails = request.blood_details || `${requestData.subtype || 'N/A'} (${requestData.quantity || '0'} Units)`;
 
             row.innerHTML = `
-                <td class="px-6 py-6">
-                    <div class="patient-info">
-                        <div class="patient-name">${patientName}</div>
-                        <div class="patient-hn">HN: ${hn}</div>
-                    </div>
+                <td class="hn-cell">${hn}</td>
+                <td>${patientName}</td>
+                <td class="text-center">
+                    <div class="pill component-${bloodType.toLowerCase()}">${bloodType.toUpperCase()}</div>
                 </td>
-                <td class="px-6 py-6 text-center">
-                    <div class="component-pill component-${bloodType.toLowerCase()}">${bloodType.toUpperCase()}</div>
+                <td>${bloodDetails}</td>
+                <td>${wardName}</td>
+                <td>
+                    <div>${deliveryLocation}</div>
+                    <div style="font-size: 0.875rem; color: #6c757d;">${deliveryTime}</div>
                 </td>
-                <td class="px-6 py-6">
-                    <div class="blood-details">${bloodDetails}</div>
-                </td>
-                <td class="px-6 py-6">
-                    <div class="font-semibold text-slate-700">${wardName}</div>
-                </td>
-                <td class="px-6 py-6">
-                    <div class="delivery-info">
-                        <div class="delivery-location">${deliveryLocation}</div>
-                        <div class="delivery-time">${deliveryTime}</div>
-                    </div>
-                </td>
-                <td class="px-6 py-6 status-cell text-center">
+                <td class="status-cell text-center">
                     ${createStatusDropdown(request.request_id, request.status)}
                 </td>
-                <td class="px-6 py-6 requested-at-cell">${formatDateTimeWithClass(request.created_at)}</td>
-                <td class="px-6 py-6 last-update-cell">${formatDateTimeWithClass(request.updated_at)}</td>
+                <td class="requested-at-cell">${formatDateTimeWithClass(request.created_at)}</td>
+                <td class="last-update-cell">${formatDateTimeWithClass(request.updated_at)}</td>
             `;
 
-            row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
+            row.querySelector('.status-select').addEventListener('change', handleStatusChange);
             return row;
         }
 
         function createStatusDropdown(requestId, currentStatus) {
-            // Removed 'submitted' status
             const statuses = ['pending', 'in_progress', 'delivered', 'cancelled'];
             let options = '';
             statuses.forEach(s => {
@@ -480,24 +408,19 @@
                 options += `<option value="${s}" ${selected}>${displayText}</option>`;
             });
             return `
-                <select data-id="${requestId}" class="status-dropdown status-pill status-${currentStatus} border-none outline-none cursor-pointer">
+                <select data-id="${requestId}" class="status-select status-${currentStatus}">
                     ${options}
                 </select>
             `;
         }
-
+        
         async function handleStatusChange(event) {
             const selectElement = event.target;
             const requestId = selectElement.dataset.id;
             const newStatus = selectElement.value;
-            const oldStatus = selectElement.getAttribute('data-old-status') || '';
-
-            // Set flag to indicate this is a manual update
+            
             isManualStatusUpdate = true;
-
-            // Update visual immediately
-            selectElement.className = `status-dropdown status-pill status-${newStatus} border-none outline-none cursor-pointer`;
-            selectElement.setAttribute('data-old-status', newStatus);
+            selectElement.className = `status-select status-${newStatus}`;
 
             try {
                 const response = await fetch(`${API_BASE_URL}/update_status`, {
@@ -506,60 +429,37 @@
                     body: JSON.stringify({ request_id: requestId, status: newStatus })
                 });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`Server error: ${errorData.message || 'Unknown error'}`);
-                }
-
-                const result = await response.json();
-                console.log(`✅ Status updated successfully for ${requestId} to ${newStatus}`);
+                if (!response.ok) throw new Error('Server update failed');
                 
-                // Update local cache
                 if (currentRequests.has(requestId)) {
                     const request = currentRequests.get(requestId);
                     request.status = newStatus;
                     request.updated_at = new Date().toISOString();
                     currentRequests.set(requestId, request);
                 }
-                
                 updateStats();
-                showNotification(`✅ Status updated to ${newStatus.replace('_', ' ')}`, 'success');
+                const row = document.getElementById(`request-${requestId}`);
+                if (row) {
+                    row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(new Date().toISOString());
+                }
 
             } catch (error) {
                 console.error("Error updating status:", error);
-                // Revert the visual change on error
-                selectElement.className = `status-dropdown status-pill status-${oldStatus} border-none outline-none cursor-pointer`;
-                selectElement.value = oldStatus;
-                showNotification(`❌ Failed to update status: ${error.message}`, 'error');
+                // Revert visual change on error - you might need old status for this
             }
-
-            // Reset flag after a short delay
-            setTimeout(() => {
-                isManualStatusUpdate = false;
-            }, 1000);
-        }
-
-        function formatDateTime(isoString) {
-            if (!isoString) return 'N/A';
-            try {
-                const date = new Date(isoString);
-                return date.toLocaleString('en-GB', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit', hour12: false
-                }).replace(',', '');
-            } catch (e) {
-                return isoString;
-            }
+            setTimeout(() => { isManualStatusUpdate = false; }, 1000);
         }
 
         function formatDateTimeWithClass(isoString) {
-            if (!isoString) return '<span class="time-old">N/A</span>';
+            if (!isoString) return `<span class="time-old">N/A</span>`;
             try {
                 const date = new Date(isoString);
                 const now = new Date();
                 const diffMinutes = (now - date) / (1000 * 60);
                 
-                const formatted = formatDateTime(isoString);
+                const formatted = date.toLocaleString('en-GB', {
+                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false
+                }).replace(',', '');
                 
                 let className = 'time-old';
                 if (diffMinutes < 5) className = 'time-fresh';
@@ -575,10 +475,7 @@
             const requests = Array.from(currentRequests.values());
             const today = new Date().toDateString();
             
-            const todayRequests = requests.filter(r => {
-                const requestDate = new Date(r.created_at).toDateString();
-                return requestDate === today;
-            });
+            const todayRequests = requests.filter(r => new Date(r.created_at).toDateString() === today);
             
             const pendingCount = requests.filter(r => r.status === 'pending').length;
             const activeCount = requests.filter(r => r.status === 'in_progress').length;
@@ -590,95 +487,6 @@
             document.getElementById('total-count').textContent = todayRequests.length;
         }
 
-        function showNotification(message, type = 'success') {
-            const container = document.getElementById('notification-container');
-            const notification = document.createElement('div');
-            
-            const bgColor = type === 'success' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                           type === 'error' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
-                           'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-            
-            notification.className = 'notification';
-            notification.style.background = bgColor;
-            notification.textContent = message;
-            
-            container.appendChild(notification);
-            
-            // Trigger animation
-            setTimeout(() => notification.classList.add('show'), 100);
-            
-            // Auto remove
-            setTimeout(() => {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    if (container.contains(notification)) {
-                        container.removeChild(notification);
-                    }
-                }, 300);
-            }, 4000);
-        }
-
-        function playNotificationSound() {
-            try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioContext.createOscillator();
-                const gainNode = audioContext.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioContext.destination);
-                
-                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-                
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.01);
-                gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.2);
-                
-                oscillator.start(audioContext.currentTime);
-                oscillator.stop(audioContext.currentTime + 0.2);
-            } catch (error) {
-                console.log('Audio notification not available');
-            }
-        }
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case 'r':
-                        e.preventDefault();
-                        fetchInitialData();
-                        showNotification('🔄 Dashboard refreshed manually', 'info');
-                        break;
-                }
-            }
-        });
-
-        // Update time displays every minute
-        setInterval(() => {
-            document.querySelectorAll('.requested-at-cell span, .last-update-cell span').forEach(span => {
-                if (span.textContent !== 'N/A') {
-                    const parentCell = span.closest('td');
-                    const isoString = parentCell.getAttribute('data-iso');
-                    if (isoString) {
-                        span.outerHTML = formatDateTimeWithClass(isoString);
-                    }
-                }
-            });
-        }, 60000);
-
-        // Auto-refresh when tab becomes visible (but don't override SSE updates)
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden) {
-                // Only refresh if we've been away for more than 5 minutes
-                const lastRefresh = localStorage.getItem('lastRefresh');
-                const now = Date.now();
-                if (!lastRefresh || (now - parseInt(lastRefresh)) > 300000) {
-                    fetchInitialData();
-                    localStorage.setItem('lastRefresh', now.toString());
-                }
-            }
-        });
     </script>
 </body>
 </html>
