@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blood Request Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* --- Basic Reset & Global Styles --- */
@@ -19,11 +21,11 @@
         html {
             line-height: 1.5;
             -webkit-text-size-adjust: 100%;
-            font-family: 'Sarabun', sans-serif;
+            /* Use 'Sarabun' from Google Fonts, which is the standard for TH Sarabun on the web */
+            font-family: 'Sarabun', 'TH SarabunPSK', sans-serif;
         }
         body {
             margin: 0;
-            font-family: 'Sarabun', sans-serif;
             background-color: #f8f9fa;
             color: #212529;
             padding: 1.5rem;
@@ -60,10 +62,21 @@
         .filter-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 1.5rem;
             margin-bottom: 1rem;
+            align-items: center;
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .filter-group label {
+            font-weight: 500;
+            color: #495057;
         }
         .filter-control {
+            font-family: inherit; /* Ensure consistent font */
             padding: 0.75rem 1rem;
             border-radius: 0.375rem;
             border: 1px solid #ced4da;
@@ -77,16 +90,10 @@
             outline: 0;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
-        #hn-search { width: 100%; max-width: 350px; }
+        #hn-search { width: 100%; max-width: 320px; }
 
         /* --- Main Table Container --- */
-        .table-container {
-            background: #ffffff;
-            border-radius: 0.5rem;
-            overflow: hidden;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
+        .table-container { background: #ffffff; border-radius: 0.5rem; overflow: hidden; border: 1px solid #dee2e6; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         table { width: 100%; border-collapse: collapse; text-align: left; }
         thead { background-color: #f8f9fa; color: #495057; font-weight: 600; font-size: 0.875rem; }
         th { padding: 1rem; border-bottom: 2px solid #dee2e6; }
@@ -104,7 +111,7 @@
         .component-cryoprecipitate { background-color: #e0f2fe; color: #0c4a6e; }
         .component-unknown { background-color: #e2e8f0; color: #334155; }
 
-        .status-select { border: 1px solid; padding: 0.35em 0.8em; border-radius: 0.25rem; font-weight: 600; font-size: 0.8rem; min-width: 120px; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-repeat: no-repeat; background-position: right 0.5rem center; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); padding-right: 2rem; }
+        .status-select { font-family: inherit; border: 1px solid; padding: 0.35em 0.8em; border-radius: 0.25rem; font-weight: 600; font-size: 0.8rem; min-width: 120px; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-repeat: no-repeat; background-position: right 0.5rem center; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); padding-right: 2rem; }
         .status-pending { background-color: #fffbeb; color: #713f12; border-color: #fcd34d; }
         .status-in_progress { background-color: #eef2ff; color: #3730a3; border-color: #a5b4fc; }
         .status-delivered { background-color: #f0fdf4; color: #15803d; border-color: #86efac; }
@@ -120,12 +127,6 @@
         .new-row-highlight { animation: fadeInHighlight 2s ease-out; }
 
         /* --- Utility Classes --- */
-        .flex { display: flex; }
-        .items-center { align-items: center; }
-        .justify-between { justify-content: space-between; }
-        .gap-2 { gap: 0.5rem; }
-        .gap-4 { gap: 1rem; }
-        .mb-6 { margin-bottom: 1.5rem; }
         .text-center { text-align: center; }
         .grid { display: grid; }
         .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -135,17 +136,17 @@
     <div style="max-width: 1400px; margin: auto;">
         
         <header class="page-header">
-            <div class="flex justify-between items-center mb-6">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div>
                     <h1>🩸 Blood Request Dashboard</h1>
                     <p>Real-time monitoring • Hospital Blood Bank</p>
                 </div>
-                <div id="connection-status" class="flex items-center gap-2">
+                <div id="connection-status" style="display: flex; align-items: center; gap: 0.5rem;">
                     <div class="status-dot status-connecting"></div>
                     <span>Connecting...</span>
                 </div>
             </div>
-            <div class="grid grid-cols-4 gap-4">
+            <div class="grid grid-cols-4" style="gap: 1rem;">
                 <div class="stat-card"><div class="count" id="pending-count">0</div><div class="label">Pending</div></div>
                 <div class="stat-card"><div class="count" id="active-count">0</div><div class="label">In Progress</div></div>
                 <div class="stat-card"><div class="count" id="delivered-count">0</div><div class="label">Delivered</div></div>
@@ -162,7 +163,14 @@
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
             </select>
-            <input type="date" id="date-filter" class="filter-control">
+            <div class="filter-group">
+                <label for="start-date-filter">From:</label>
+                <input type="date" id="start-date-filter" class="filter-control">
+            </div>
+            <div class="filter-group">
+                <label for="end-date-filter">To:</label>
+                <input type="date" id="end-date-filter" class="filter-control">
+            </div>
         </div>
 
         <main class="table-container">
@@ -200,13 +208,15 @@
 
             document.getElementById('hn-search').addEventListener('input', applyFilters);
             document.getElementById('status-filter').addEventListener('change', applyFilters);
-            document.getElementById('date-filter').addEventListener('change', applyFilters);
+            document.getElementById('start-date-filter').addEventListener('change', applyFilters);
+            document.getElementById('end-date-filter').addEventListener('change', applyFilters);
         });
 
         function applyFilters() {
             const hnQuery = document.getElementById('hn-search').value.toLowerCase().trim();
             const statusFilter = document.getElementById('status-filter').value;
-            const dateFilter = document.getElementById('date-filter').value; // YYYY-MM-DD
+            const startDateFilter = document.getElementById('start-date-filter').value;
+            const endDateFilter = document.getElementById('end-date-filter').value;
 
             const tableBody = document.getElementById('requests-table-body');
             const rows = tableBody.getElementsByTagName('tr');
@@ -218,7 +228,14 @@
 
                 const hnMatch = hnCell ? (hnCell.textContent || hnCell.innerText).toLowerCase().includes(hnQuery) : true;
                 const statusMatch = (statusFilter === 'all') || (rowStatus === statusFilter);
-                const dateMatch = (dateFilter === '') || (rowDate === dateFilter);
+                
+                let dateMatch = true;
+                if (startDateFilter && rowDate < startDateFilter) {
+                    dateMatch = false;
+                }
+                if (endDateFilter && rowDate > endDateFilter) {
+                    dateMatch = false;
+                }
 
                 if (hnMatch && statusMatch && dateMatch) {
                     row.style.display = "";
@@ -227,6 +244,47 @@
                 }
             }
         }
+
+        async function fetchInitialData() {
+            // ... (rest of the function is unchanged)
+        }
+
+        function connectToSSE() {
+            // ... (unchanged)
+        }
+
+        function handleNewRequest(requestData) {
+            // ... (unchanged)
+        }
+        
+        function handleStatusUpdate(updateData) {
+            // ... (unchanged)
+        }
+
+        function createRequestRow(request) {
+            // ... (unchanged)
+        }
+        
+        function createStatusDropdown(requestId, currentStatus) {
+            // ... (unchanged)
+        }
+        
+        async function handleStatusChange(event) {
+            // ... (unchanged)
+        }
+
+        function formatDateTimeWithClass(isoString) {
+            // ... (unchanged)
+        }
+
+        function updateStats() {
+            // ... (unchanged)
+        }
+
+        // --- PASTE PREVIOUS UNCHANGED JAVASCRIPT FUNCTIONS HERE ---
+        // To keep the response concise, the functions that were not modified are omitted.
+        // In a real application, they would remain as they were in the previous step.
+        // The following are the full, correct functions for completeness.
 
         async function fetchInitialData() {
             try {
@@ -245,7 +303,7 @@
                 });
                 
                 updateStats();
-                applyFilters(); // Apply initial filters on load
+                applyFilters();
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 const tableBody = document.getElementById('requests-table-body');
@@ -279,14 +337,13 @@
             
             currentRequests.set(requestData.request_id, requestData);
             updateStats();
-            applyFilters(); // Ensure new row visibility respects current filters
+            applyFilters();
         }
 
         function handleStatusUpdate(updateData) {
             const row = document.getElementById(`request-${updateData.request_id}`);
             if (!row) return;
 
-            // Update status and timestamp
             row.dataset.status = updateData.status;
             row.querySelector('.status-cell').innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
             row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(updateData.updated_at);
@@ -299,18 +356,17 @@
                 currentRequests.set(updateData.request_id, request);
             }
             updateStats();
-            applyFilters(); // Re-apply filters as status has changed
+            applyFilters();
         }
 
         function createRequestRow(request) {
             const row = document.createElement('tr');
             row.id = `request-${request.request_id}`;
             row.dataset.status = request.status;
-            row.dataset.date = request.created_at.split('T')[0]; // Store date as YYYY-MM-DD
+            row.dataset.date = request.created_at.split('T')[0];
 
             const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
             
-            // Extract data with fallbacks
             const bloodType = request.blood_type || requestData.bloodType || 'unknown';
             const patientName = request.patient_name || requestData.patientName || 'N/A';
             const hn = request.hospital_number || requestData.hn || 'N/A';
@@ -319,7 +375,6 @@
             const deliveryTime = request.delivery_time || requestData.deliveryTime || '';
             const bloodDetails = request.blood_details || `${requestData.subtype || 'N/A'} (${requestData.quantity || '0'} Units)`;
 
-            // Parse Subtype and Units from details string
             let subtype = 'N/A';
             let units = 'N/A';
             const detailsRegex = /(.+) \((\d+)\s*Units?\)/i;
@@ -328,7 +383,7 @@
                 subtype = match[1].trim();
                 units = match[2];
             } else {
-                subtype = bloodDetails; // Fallback if format is unexpected
+                subtype = bloodDetails;
             }
 
             row.innerHTML = `
@@ -383,7 +438,6 @@
 
                 const row = document.getElementById(`request-${requestId}`);
                 if (row) {
-                    // Manually update data on the client for immediate feedback
                     row.dataset.status = newStatus;
                     row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(new Date().toISOString());
                 }
@@ -395,7 +449,7 @@
                     currentRequests.set(requestId, request);
                 }
                 updateStats();
-                applyFilters(); // Re-apply filters after status change
+                applyFilters();
             } catch (error) {
                 console.error("Error updating status:", error);
             }
