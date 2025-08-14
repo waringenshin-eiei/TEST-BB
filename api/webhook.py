@@ -163,7 +163,7 @@ def send_form_link(user_id):
 def notify_dashboard_update(event_type, data):
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
-        sse_queue.put_nowait(json.dumps(event_data))
+        sse_queue.put_nowait(json.dumps(event_data, default=str)) # Use default=str for serialization
     except queue.Full:
         print("⚠️ SSE queue is full, dropping event")
 
@@ -236,7 +236,7 @@ class handler(BaseHTTPRequestHandler):
                     
                     sql_insert_request = """
                         INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, blood_type, patient_name, hospital_number, delivery_location, reporter_name, blood_details, request_data)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING request_id, created_at;
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *;
                     """
                     blood_details_str = f"{form_data.get('subtype')} ({form_data.get('quantity')} Units)"
                     insert_values = (
@@ -246,24 +246,26 @@ class handler(BaseHTTPRequestHandler):
                         json.dumps(form_data))
                     
                     cur.execute(sql_insert_request, insert_values)
-                    result = cur.fetchone()
-                    new_request_id, created_at = str(result[0]), result[1]
-                    
-                    cur.execute("""
-                        INSERT INTO blood_components (request_id, component_type, quantity, component_subtype)
-                        VALUES (%s, %s, %s, %s)
-                    """, (new_request_id, form_data.get('bloodType'), form_data.get('quantity'), form_data.get('subtype')))
+                    new_request_record = cur.fetchone()
                     conn.commit()
             
+            new_request_id = str(new_request_record[0])
             print(f"✅ DB insert successful for new request {new_request_id}")
+
             report_data = {**form_data, "request_id": new_request_id}
             flex_message = create_flex_report(report_data)
             send_line_message(line_user_id, flex_message)
             
-            notify_dashboard_update('new_request', {
-                'request_id': new_request_id, 'status': 'pending', 'ward_name': form_data.get('wardName'),
-                'created_at': created_at.isoformat(), 'patient_name': form_data.get('patientName')
-            })
+            # The full record is needed for the dashboard to render a new row correctly
+            full_request_data = {
+                'request_id': new_request_id,
+                'status': 'pending',
+                'blood_type': form_data.get('bloodType'),
+                'request_data': form_data,
+                'created_at': new_request_record[13], # created_at column
+                'updated_at': new_request_record[14]  # updated_at column
+            }
+            notify_dashboard_update('new_request', full_request_data)
 
             self._send_response(200, {"status": "success", "request_id": new_request_id})
 
@@ -283,7 +285,9 @@ class handler(BaseHTTPRequestHandler):
                         WHERE status IN ('pending', 'submitted', 'in_progress')
                         ORDER BY created_at DESC LIMIT 100;
                     """)
-                    requests = [dict(row) for row in cur.fetchall()]
+                    # FIX: This is the corrected part. fetchall() returns a list of dict-like objects
+                    # that can be directly serialized by json.dumps with a default handler.
+                    requests = cur.fetchall()
             self._send_response(200, {"requests": requests})
         except Exception as e:
             print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
@@ -304,7 +308,7 @@ class handler(BaseHTTPRequestHandler):
                         UPDATE blood_requests SET status = %s, updated_at = NOW()
                         WHERE request_id = %s RETURNING *;
                     """, (new_status, request_id))
-                    updated_request = dict(cur.fetchone())
+                    updated_request = cur.fetchone()
                     conn.commit()
             
             if updated_request:
@@ -312,7 +316,7 @@ class handler(BaseHTTPRequestHandler):
                 notify_dashboard_update('status_update', {
                     'request_id': str(updated_request['request_id']),
                     'status': updated_request['status'],
-                    'updated_at': updated_request['updated_at'].isoformat()
+                    'updated_at': updated_request['updated_at']
                 })
                 self._send_response(200, {"status": "success", "request": updated_request})
             else:
@@ -360,4 +364,5 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         if body is not None:
+            # Use default=str to handle non-serializable types like datetime and UUID
             self.wfile.write(json.dumps(body, ensure_ascii=False, default=str).encode('utf-8'))
