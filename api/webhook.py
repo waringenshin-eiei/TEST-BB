@@ -2,10 +2,10 @@
 #
 # This single file provides a complete backend solution managing:
 # 1. POST /api/webhook:         Instantaneous replies to the LINE Messaging API.
-# 2. POST /api/submit_request:   Handles submissions, creates new users, splits JSON to DB columns, and sends rich reports.
-# 3. GET  /api/get_requests:     Fetches initial data for the dashboard.
-# 4. POST /api/update_status:    Handles status changes from the dashboard.
-# 5. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
+# 2. POST /api/submit_request:  Handles submissions, creates new users, splits JSON to DB columns, and sends rich reports.
+# 3. GET  /api/get_requests:      Fetches initial data for the dashboard.
+# 4. POST /api/update_status:   Handles status changes from the dashboard.
+# 5. GET  /api/sse-updates:       Provides a real-time Server-Sent Events stream for dashboards.
 #
 # --- Required Libraries ---
 # pip install requests psycopg[binary] redis
@@ -276,12 +276,34 @@ class handler(BaseHTTPRequestHandler):
                         WHERE status IN ('pending', 'submitted', 'in_progress')
                         ORDER BY created_at DESC LIMIT 100;
                     """)
-                    # This ensures the list of dict-like rows is converted to a proper list of dicts
-                    requests = [dict(row) for row in cur.fetchall()]
-            self._send_response(200, {"requests": requests})
+                    raw_requests = cur.fetchall()
+            
+            # Manually process records for safe JSON serialization
+            processed_requests = []
+            for row in raw_requests:
+                record = dict(row)
+                # Ensure datetime objects are converted to ISO 8601 strings
+                if 'created_at' in record and isinstance(record['created_at'], datetime):
+                    record['created_at'] = record['created_at'].isoformat()
+                if 'updated_at' in record and isinstance(record['updated_at'], datetime):
+                    record['updated_at'] = record['updated_at'].isoformat()
+                
+                # If request_data is a JSON string from the DB, parse it into a dict
+                if 'request_data' in record and isinstance(record['request_data'], str):
+                    try:
+                        record['request_data'] = json.loads(record['request_data'])
+                    except json.JSONDecodeError:
+                        # Handle malformed JSON string if necessary
+                        print(f"⚠️ Warning: Malformed JSON in request_data for request_id {record.get('request_id')}")
+                        record['request_data'] = {} # or some other default
+
+                processed_requests.append(record)
+
+            self._send_response(200, {"requests": processed_requests})
         except Exception as e:
             print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
             self._send_response(500, {"error": "Failed to fetch requests."})
+
 
     def handle_update_status(self):
         """Updates the status of a request from the dashboard."""
