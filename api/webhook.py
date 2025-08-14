@@ -59,21 +59,42 @@ def get_user_profile(line_user_id):
             print(f"⚠️ Redis GET error: {e}")
 
     print(f"CACHE MISS for user {line_user_id}. Querying PostgreSQL.")
-    with get_db_connection() as conn:
-        if not conn: return None
-        with conn.cursor() as cur:
-            cur.execute("SELECT user_id FROM users WHERE line_user_id = %s", (line_user_id,))
-            result = cur.fetchone()
-
-    if not result: return None
-    profile_data = {"user_uuid": str(result[0])}
-    if redis_client:
+    
+    try:
+        conn = get_db_connection()
+        if not conn: 
+            print("❌ Database connection failed")
+            return None
+            
         try:
-            redis_client.set(cache_key, json.dumps(profile_data), ex=86400) # Cache for 24 hours
-            print(f"CACHE SET for user {line_user_id}")
-        except Exception as e:
-            print(f"⚠️ Redis SET error: {e}")
-    return profile_data
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute("SELECT user_id FROM users WHERE line_user_id = %s", (line_user_id,))
+                result = cur.fetchone()
+                
+                if not result:
+                    print(f"No user found for line_user_id: {line_user_id}")
+                    return None
+                    
+                # Access the result properly
+                user_uuid = result['user_id'] if isinstance(result, dict) else result[0]
+                profile_data = {"user_uuid": str(user_uuid)}
+                
+                if redis_client:
+                    try:
+                        redis_client.set(cache_key, json.dumps(profile_data), ex=86400)
+                        print(f"CACHE SET for user {line_user_id}")
+                    except Exception as e:
+                        print(f"⚠️ Redis SET error: {e}")
+                        
+                return profile_data
+                
+        finally:
+            conn.close()
+            
+    except Exception as e:
+        print(f"❌ Error in get_user_profile: {e}")
+        print(f"Traceback: {traceback.format_exc()}")
+        return None
 
 # --- Core Logic: LINE Messaging & Flex Report ---
 def send_line_message(user_id, messages):
@@ -267,89 +288,161 @@ class handler(BaseHTTPRequestHandler):
     def handle_get_requests(self):
         """Fetches initial requests for the dashboard."""
         try:
-            with get_db_connection() as conn:
-                if not conn: 
-                    raise ConnectionError("Database connection failed")
-                
+            conn = get_db_connection()
+            if not conn: 
+                raise ConnectionError("Database connection failed")
+            
+            try:
                 with conn.cursor(row_factory=dict_row) as cur:
-                    # First, let's check what status values actually exist in the database
-                    cur.execute("SELECT DISTINCT status FROM blood_requests;")
-                    existing_statuses = [row[0] for row in cur.fetchall()]
-                    print(f"📊 Available status values in database: {existing_statuses}")
+                    # First, let's check what tables exist
+                    cur.execute("""
+                        SELECT table_name 
+                        FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name IN ('blood_requests', 'ward_directory');
+                    """)
+                    tables = [row['table_name'] for row in cur.fetchall()]
+                    print(f"📊 Available tables: {tables}")
                     
-                    # Use only 'pending' for now, since that's the only one that works
-                    # You can add more status values once you fix the enum
+                    # Check if blood_requests table exists and what columns it has
+                    if 'blood_requests' in tables:
+                        cur.execute("""
+                            SELECT column_name, data_type 
+                            FROM information_schema.columns 
+                            WHERE table_name = 'blood_requests';
+                        """)
+                        columns = cur.fetchall()
+                        print(f"📊 blood_requests columns: {[col['column_name'] for col in columns]}")
+                    else:
+                        raise Exception("blood_requests table not found")
+                    
+                    # Start with a simple query to test
+                    cur.execute("SELECT COUNT(*) as count FROM blood_requests;")
+                    count_result = cur.fetchone()
+                    print(f"📊 Total records in blood_requests: {count_result['count']}")
+                    
+                    # Try a basic query first
                     cur.execute("""
                         SELECT 
-                            br.request_id, 
-                            br.status, 
-                            br.blood_type, 
-                            br.patient_name,
-                            br.hospital_number,
-                            br.delivery_location,
-                            br.blood_details,
-                            br.request_data, 
-                            br.created_at, 
-                            br.updated_at,
-                            wd.ward_name
-                        FROM blood_requests br
-                        LEFT JOIN ward_directory wd ON br.ward_id = wd.ward_id
-                        WHERE br.status = 'pending'  -- Only use 'pending' for now
-                        ORDER BY br.created_at DESC 
-                        LIMIT 100;
+                            request_id, 
+                            status, 
+                            blood_type, 
+                            created_at, 
+                            updated_at
+                        FROM blood_requests
+                        ORDER BY created_at DESC 
+                        LIMIT 10;
                     """)
+                    basic_requests = cur.fetchall()
+                    print(f"📊 Retrieved {len(basic_requests)} basic records")
+                    
+                    # Now try the full query
+                    if 'ward_directory' in tables:
+                        cur.execute("""
+                            SELECT 
+                                br.request_id, 
+                                br.status, 
+                                br.blood_type, 
+                                br.patient_name,
+                                br.hospital_number,
+                                br.delivery_location,
+                                br.blood_details,
+                                br.request_data, 
+                                br.created_at, 
+                                br.updated_at,
+                                wd.ward_name
+                            FROM blood_requests br
+                            LEFT JOIN ward_directory wd ON br.ward_id = wd.ward_id
+                            ORDER BY br.created_at DESC 
+                            LIMIT 100;
+                        """)
+                    else:
+                        # Query without ward join if ward_directory doesn't exist
+                        cur.execute("""
+                            SELECT 
+                                request_id, 
+                                status, 
+                                blood_type, 
+                                patient_name,
+                                hospital_number,
+                                delivery_location,
+                                blood_details,
+                                request_data, 
+                                created_at, 
+                                updated_at,
+                                'N/A' as ward_name
+                            FROM blood_requests
+                            ORDER BY created_at DESC 
+                            LIMIT 100;
+                        """)
+                    
                     raw_requests = cur.fetchall()
+                    print(f"📊 Retrieved {len(raw_requests)} full records")
+                    
+            finally:
+                conn.close()
             
             # Process records for safe JSON serialization
             processed_requests = []
-            for row in raw_requests:
-                record = dict(row)
-                
-                # Handle datetime conversion
-                for date_field in ['created_at', 'updated_at']:
-                    if date_field in record and record[date_field]:
-                        if isinstance(record[date_field], datetime):
-                            record[date_field] = record[date_field].isoformat()
-                        elif isinstance(record[date_field], str):
+            for i, row in enumerate(raw_requests):
+                try:
+                    record = dict(row) if hasattr(row, 'keys') else dict(row._asdict()) if hasattr(row, '_asdict') else {}
+                    print(f"📊 Processing record {i}: {list(record.keys())}")
+                    
+                    # Handle datetime conversion
+                    for date_field in ['created_at', 'updated_at']:
+                        if date_field in record and record[date_field]:
+                            if isinstance(record[date_field], datetime):
+                                record[date_field] = record[date_field].isoformat()
+                            elif isinstance(record[date_field], str):
+                                try:
+                                    dt = datetime.fromisoformat(record[date_field].replace('Z', '+00:00'))
+                                    record[date_field] = dt.isoformat()
+                                except ValueError:
+                                    pass
+                    
+                    # Handle request_data JSON parsing
+                    if 'request_data' in record and record['request_data']:
+                        if isinstance(record['request_data'], str):
                             try:
-                                dt = datetime.fromisoformat(record[date_field].replace('Z', '+00:00'))
-                                record[date_field] = dt.isoformat()
-                            except ValueError:
-                                pass
-                
-                # Handle request_data JSON parsing
-                if 'request_data' in record and record['request_data']:
-                    if isinstance(record['request_data'], str):
-                        try:
-                            record['request_data'] = json.loads(record['request_data'])
-                        except json.JSONDecodeError:
-                            print(f"⚠️ Warning: Malformed JSON in request_data for request_id {record.get('request_id')}")
+                                record['request_data'] = json.loads(record['request_data'])
+                            except json.JSONDecodeError:
+                                print(f"⚠️ Warning: Malformed JSON in request_data for request_id {record.get('request_id')}")
+                                record['request_data'] = {}
+                        elif record['request_data'] is None:
                             record['request_data'] = {}
-                    elif record['request_data'] is None:
+                    else:
                         record['request_data'] = {}
-                else:
-                    record['request_data'] = {}
-                
-                # Ensure all required fields have default values
-                record.setdefault('patient_name', 'N/A')
-                record.setdefault('hospital_number', 'N/A')
-                record.setdefault('delivery_location', 'N/A')
-                record.setdefault('blood_details', 'N/A')
-                record.setdefault('ward_name', 'N/A')
-                record.setdefault('blood_type', 'unknown')
-                record.setdefault('status', 'pending')
+                    
+                    # Ensure all required fields have default values
+                    record.setdefault('patient_name', 'N/A')
+                    record.setdefault('hospital_number', 'N/A')
+                    record.setdefault('delivery_location', 'N/A')
+                    record.setdefault('blood_details', 'N/A')
+                    record.setdefault('ward_name', 'N/A')
+                    record.setdefault('blood_type', 'unknown')
+                    record.setdefault('status', 'pending')
+                    record.setdefault('request_id', f'unknown_{i}')
     
-                processed_requests.append(record)
+                    processed_requests.append(record)
+                    
+                except Exception as row_error:
+                    print(f"❌ Error processing row {i}: {row_error}")
+                    print(f"Raw row data: {row}")
+                    continue
     
             print(f"✅ Successfully processed {len(processed_requests)} requests")
             self._send_response(200, {"requests": processed_requests})
             
         except Exception as e:
-            print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
+            print(f"❌ Get requests error: {e}")
+            print(f"Error type: {type(e).__name__}")
+            print(f"Traceback: {traceback.format_exc()}")
             error_details = {
                 "error": "Failed to fetch requests",
                 "message": str(e),
-                "type": type(e).__name__
+                "type": type(e).__name__,
+                "traceback": traceback.format_exc()
             }
             self._send_response(500, error_details)
 
