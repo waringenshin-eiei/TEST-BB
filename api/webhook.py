@@ -27,7 +27,7 @@ import traceback
 # --- Configuration ---
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
 LINE_TOKEN = os.environ.get('LINE_TOKEN')
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Set this in your environment
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://test-bb-six.vercel.app') # IMPORTANT: Set this in your environment
 KV_URL = os.environ.get('KV_URL')
 
 # --- Constants & Globals ---
