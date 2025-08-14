@@ -3,7 +3,9 @@
 # This single file provides a complete backend solution managing:
 # 1. POST /api/webhook:         Instantaneous replies to the LINE Messaging API.
 # 2. POST /api/submit_request:   Handles submissions, creates new users, splits JSON to DB columns, and sends rich reports.
-# 3. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
+# 3. GET  /api/get_requests:     Fetches initial data for the dashboard.
+# 4. POST /api/update_status:    Handles status changes from the dashboard.
+# 5. GET  /api/sse-updates:      Provides a real-time Server-Sent Events stream for dashboards.
 #
 # --- Required Libraries ---
 # pip install requests psycopg[binary] redis
@@ -14,6 +16,7 @@ from datetime import datetime, timezone, timedelta
 import os
 import requests
 import psycopg
+from psycopg.rows import dict_row
 from redis import Redis
 import urllib.parse
 import threading
@@ -24,7 +27,7 @@ import traceback
 # --- Configuration ---
 POSTGRES_URL = os.environ.get('POSTGRES_URL')
 LINE_TOKEN = os.environ.get('LINE_TOKEN')
-FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://test-bb-six.vercel.app') # IMPORTANT: Set this in your environment
+FORM_BASE_URL = os.environ.get('FORM_BASE_URL', 'https://your-domain.com') # IMPORTANT: Set this in your environment
 KV_URL = os.environ.get('KV_URL')
 
 # --- Constants & Globals ---
@@ -88,9 +91,7 @@ def send_line_message(user_id, messages):
         print(f"❌ LINE API Error: {e}")
 
 def create_flex_report(report_data):
-    """
-    REFINED: Creates a LINE Flex Message with bilingual labels, bold patient info, and full date.
-    """
+    """Creates a beautiful, color-coded LINE Flex Message JSON object with bilingual labels."""
     blood_type = report_data.get('bloodType', 'unknown').lower()
     color_themes = {
         'redcell': {'main': '#B91C1C', 'light': '#FEF2F2'},
@@ -100,7 +101,6 @@ def create_flex_report(report_data):
     }
     theme = color_themes.get(blood_type, color_themes['unknown'])
     
-    # FIX: Combine today's date with the selected delivery time
     delivery_time = report_data.get('deliveryTime', '-')
     todays_date = datetime.now(THAILAND_TZ).strftime('%d %b %Y')
     full_delivery_schedule = f"{todays_date}, {delivery_time}" if delivery_time != '-' else '-'
@@ -139,7 +139,7 @@ def create_flex_report(report_data):
                 create_bilingual_row("ชนิดย่อย", "Subtype", report_data.get('subtype', '-')),
                 create_bilingual_row("จำนวน", "Quantity", f"{report_data.get('quantity')} Units"),
                 {"type": "separator", "margin": "lg"},
-                create_bilingual_row("รอบส่ง", "Schedule", full_delivery_schedule), # Use the new combined date and time
+                create_bilingual_row("รอบส่ง", "Schedule", full_delivery_schedule),
                 create_bilingual_row("สถานที่", "Location", report_data.get('deliveryLocation')),
                 create_bilingual_row("ผู้แจ้ง", "Reporter", report_data.get('reporterName')),
                 {"type": "separator", "margin": "lg"},
@@ -189,10 +189,12 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.path == '/api/webhook': self.handle_line_webhook()
         elif self.path == '/api/submit_request': self.handle_form_submission()
+        elif self.path == '/api/update_status': self.handle_update_status()
         else: self._send_response(404, {"error": "Endpoint not found"})
 
     def do_GET(self):
         if self.path == '/api/sse-updates': self.handle_sse_connection()
+        elif self.path == '/api/get_requests': self.handle_get_requests()
         elif self.path == '/api/webhook': self._send_response(200, {"status": "ok"})
         else: self._send_response(404, {"error": "Endpoint not found"})
 
@@ -219,14 +221,10 @@ class handler(BaseHTTPRequestHandler):
                 with conn.cursor() as cur:
                     if not user_profile:
                         print(f"INFO: User {line_user_id} not found. Creating new user record.")
-                        cur.execute(
-                            "INSERT INTO users (line_user_id) VALUES (%s) RETURNING user_id",
-                            (line_user_id,)
-                        )
+                        cur.execute("INSERT INTO users (line_user_id) VALUES (%s) RETURNING user_id", (line_user_id,))
                         new_user_uuid = str(cur.fetchone()[0])
                         user_profile = {'user_uuid': new_user_uuid}
-                        if redis_client:
-                             redis_client.set(f"user_profile:{line_user_id}", json.dumps(user_profile), ex=86400)
+                        if redis_client: redis_client.set(f"user_profile:{line_user_id}", json.dumps(user_profile), ex=86400)
                     
                     selected_ward_name = form_data.get('wardName')
                     if not selected_ward_name: raise ValueError("Ward Name from form is required")
@@ -237,24 +235,15 @@ class handler(BaseHTTPRequestHandler):
                     ward_id_for_request = ward_result[0]
                     
                     sql_insert_request = """
-                        INSERT INTO blood_requests (
-                            user_id, ward_id, schedule_id, status, 
-                            blood_type, patient_name, hospital_number, 
-                            delivery_location, reporter_name, blood_details,
-                            request_data
-                        )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) 
-                        RETURNING request_id, created_at;
+                        INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, blood_type, patient_name, hospital_number, delivery_location, reporter_name, blood_details, request_data)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING request_id, created_at;
                     """
-                    
                     blood_details_str = f"{form_data.get('subtype')} ({form_data.get('quantity')} Units)"
-                    
                     insert_values = (
                         user_profile['user_uuid'], ward_id_for_request, form_data.get('schedule_id'), 'pending',
                         form_data.get('bloodType'), form_data.get('patientName'), form_data.get('hn'),
                         form_data.get('deliveryLocation'), form_data.get('reporterName'), blood_details_str,
-                        json.dumps(form_data)
-                    )
+                        json.dumps(form_data))
                     
                     cur.execute(sql_insert_request, insert_values)
                     result = cur.fetchone()
@@ -267,7 +256,6 @@ class handler(BaseHTTPRequestHandler):
                     conn.commit()
             
             print(f"✅ DB insert successful for new request {new_request_id}")
-
             report_data = {**form_data, "request_id": new_request_id}
             flex_message = create_flex_report(report_data)
             send_line_message(line_user_id, flex_message)
@@ -282,6 +270,56 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"❌ Form submission error: {e}\n{traceback.format_exc()}")
             self._send_response(500, {"status": "error", "message": "An internal error occurred."})
+
+    def handle_get_requests(self):
+        """Fetches initial requests for the dashboard."""
+        try:
+            with get_db_connection() as conn:
+                if not conn: raise ConnectionError("Database connection failed")
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute("""
+                        SELECT request_id, status, blood_type, request_data, created_at, updated_at 
+                        FROM blood_requests 
+                        WHERE status IN ('pending', 'submitted', 'in_progress')
+                        ORDER BY created_at DESC LIMIT 100;
+                    """)
+                    requests = [dict(row) for row in cur.fetchall()]
+            self._send_response(200, {"requests": requests})
+        except Exception as e:
+            print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
+            self._send_response(500, {"error": "Failed to fetch requests."})
+
+    def handle_update_status(self):
+        """Updates the status of a request from the dashboard."""
+        try:
+            form_data = json.loads(self.rfile.read(int(self.headers.get('Content-Length', 0))))
+            request_id = form_data.get('request_id')
+            new_status = form_data.get('status')
+            if not request_id or not new_status: raise ValueError("request_id and status are required")
+
+            with get_db_connection() as conn:
+                if not conn: raise ConnectionError("Database connection failed")
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute("""
+                        UPDATE blood_requests SET status = %s, updated_at = NOW()
+                        WHERE request_id = %s RETURNING *;
+                    """, (new_status, request_id))
+                    updated_request = dict(cur.fetchone())
+                    conn.commit()
+            
+            if updated_request:
+                print(f"✅ Status updated for {request_id} to {new_status}")
+                notify_dashboard_update('status_update', {
+                    'request_id': str(updated_request['request_id']),
+                    'status': updated_request['status'],
+                    'updated_at': updated_request['updated_at'].isoformat()
+                })
+                self._send_response(200, {"status": "success", "request": updated_request})
+            else:
+                self._send_response(404, {"error": "Request not found"})
+        except Exception as e:
+            print(f"❌ Update status error: {e}\n{traceback.format_exc()}")
+            self._send_response(500, {"error": "Failed to update status."})
 
     def handle_sse_connection(self):
         self.send_response(200)
@@ -322,4 +360,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         if body is not None:
-            self.wfile.write(json.dumps(body, ensure_ascii=False).encode('utf-8'))
+            self.wfile.write(json.dumps(body, ensure_ascii=False, default=str).encode('utf-8'))
