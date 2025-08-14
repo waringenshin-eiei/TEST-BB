@@ -268,41 +268,90 @@ class handler(BaseHTTPRequestHandler):
         """Fetches initial requests for the dashboard."""
         try:
             with get_db_connection() as conn:
-                if not conn: raise ConnectionError("Database connection failed")
+                if not conn: 
+                    raise ConnectionError("Database connection failed")
+                
                 with conn.cursor(row_factory=dict_row) as cur:
+                    # First, let's check what status values actually exist in the database
+                    cur.execute("SELECT DISTINCT status FROM blood_requests;")
+                    existing_statuses = [row[0] for row in cur.fetchall()]
+                    print(f"📊 Available status values in database: {existing_statuses}")
+                    
+                    # Use only 'pending' for now, since that's the only one that works
+                    # You can add more status values once you fix the enum
                     cur.execute("""
-                        SELECT request_id, status, blood_type, request_data, created_at, updated_at 
-                        FROM blood_requests 
-                        WHERE status IN ('pending', 'submitted', 'in_progress')
-                        ORDER BY created_at DESC LIMIT 100;
+                        SELECT 
+                            br.request_id, 
+                            br.status, 
+                            br.blood_type, 
+                            br.patient_name,
+                            br.hospital_number,
+                            br.delivery_location,
+                            br.blood_details,
+                            br.request_data, 
+                            br.created_at, 
+                            br.updated_at,
+                            wd.ward_name
+                        FROM blood_requests br
+                        LEFT JOIN ward_directory wd ON br.ward_id = wd.ward_id
+                        WHERE br.status = 'pending'  -- Only use 'pending' for now
+                        ORDER BY br.created_at DESC 
+                        LIMIT 100;
                     """)
                     raw_requests = cur.fetchall()
             
-            # Manually process records for safe JSON serialization
+            # Process records for safe JSON serialization
             processed_requests = []
             for row in raw_requests:
                 record = dict(row)
-                # Ensure datetime objects are converted to ISO 8601 strings
-                if 'created_at' in record and isinstance(record['created_at'], datetime):
-                    record['created_at'] = record['created_at'].isoformat()
-                if 'updated_at' in record and isinstance(record['updated_at'], datetime):
-                    record['updated_at'] = record['updated_at'].isoformat()
                 
-                # If request_data is a JSON string from the DB, parse it into a dict
-                if 'request_data' in record and isinstance(record['request_data'], str):
-                    try:
-                        record['request_data'] = json.loads(record['request_data'])
-                    except json.JSONDecodeError:
-                        # Handle malformed JSON string if necessary
-                        print(f"⚠️ Warning: Malformed JSON in request_data for request_id {record.get('request_id')}")
-                        record['request_data'] = {} # or some other default
-
+                # Handle datetime conversion
+                for date_field in ['created_at', 'updated_at']:
+                    if date_field in record and record[date_field]:
+                        if isinstance(record[date_field], datetime):
+                            record[date_field] = record[date_field].isoformat()
+                        elif isinstance(record[date_field], str):
+                            try:
+                                dt = datetime.fromisoformat(record[date_field].replace('Z', '+00:00'))
+                                record[date_field] = dt.isoformat()
+                            except ValueError:
+                                pass
+                
+                # Handle request_data JSON parsing
+                if 'request_data' in record and record['request_data']:
+                    if isinstance(record['request_data'], str):
+                        try:
+                            record['request_data'] = json.loads(record['request_data'])
+                        except json.JSONDecodeError:
+                            print(f"⚠️ Warning: Malformed JSON in request_data for request_id {record.get('request_id')}")
+                            record['request_data'] = {}
+                    elif record['request_data'] is None:
+                        record['request_data'] = {}
+                else:
+                    record['request_data'] = {}
+                
+                # Ensure all required fields have default values
+                record.setdefault('patient_name', 'N/A')
+                record.setdefault('hospital_number', 'N/A')
+                record.setdefault('delivery_location', 'N/A')
+                record.setdefault('blood_details', 'N/A')
+                record.setdefault('ward_name', 'N/A')
+                record.setdefault('blood_type', 'unknown')
+                record.setdefault('status', 'pending')
+    
                 processed_requests.append(record)
-
+    
+            print(f"✅ Successfully processed {len(processed_requests)} requests")
             self._send_response(200, {"requests": processed_requests})
+            
         except Exception as e:
             print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
-            self._send_response(500, {"error": "Failed to fetch requests."})
+            error_details = {
+                "error": "Failed to fetch requests",
+                "message": str(e),
+                "type": type(e).__name__
+            }
+            self._send_response(500, error_details)
 
 
     def handle_update_status(self):
