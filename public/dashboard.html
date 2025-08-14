@@ -1,561 +1,276 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blood Bank Dashboard</title>
+    <title>Real-Time Blood Request Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8f9fa; }
-        .tab-button { padding: 0.5rem 1rem; border-bottom: 3px solid transparent; transition: all 0.2s; font-weight: 600; }
-        .tab-button.active { border-color: #dc2626; color: #dc2626; background-color: #fef2f2; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.5s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .stat-card { background: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); transition: all 0.3s; }
-        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); }
-        .table th { background-color: #f1f5f9; }
-        .table tr:hover { background-color: #fef2f2; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #dc2626; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .notification-toast { position: fixed; top: 20px; right: 20px; z-index: 1000; transform: translateX(400px); transition: transform 0.3s ease-in-out; }
-        .notification-toast.show { transform: translateX(0); }
-        .notification-toast.hide { transform: translateX(400px); }
-        
-        .status-indicator { position: relative; display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
-        .status-indicator.online { background-color: #10b981; animation: pulse 2s infinite; }
-        .status-indicator.offline { background-color: #ef4444; }
-        .status-indicator.reconnecting { background-color: #f59e0b; animation: pulse 1s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        
-        .updating { animation: updateGlow 1s ease-in-out; }
-        @keyframes updateGlow { 0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1); } 50% { box-shadow: 0 4px 20px rgba(220, 38, 38, 0.3); } }
-        
-        /* --- MODIFIED: Highlight animation now lasts 10 minutes. Green for 60s, then yellow. --- */
-        .new-row {
-            /* Animation lasts for 600 seconds (10 minutes) */
-            animation: highlightNewRow 600s linear;
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #f1f5f9;
         }
-        @keyframes highlightNewRow {
-            /* --- Phase 1: Solid Green (First 60 seconds) --- */
-            /* A new request appears with a green background. */
-            0%   { background-color: #a7f3d0; } /* Start green */
-            10%  { background-color: #a7f3d0; } /* 10% of 600s = 60s. Stays green. */
+        .status-pill {
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-pending { background-color: #fef9c3; color: #854d0e; }
+        .status-submitted { background-color: #dbeafe; color: #1e40af; }
+        .status-in_progress { background-color: #e0e7ff; color: #3730a3; }
+        .status-delivered { background-color: #dcfce7; color: #166534; }
+        .status-cancelled { background-color: #fee2e2; color: #991b1b; }
 
-            /* --- Phase 2: Fade to Yellow (Next 15 seconds) --- */
-            /* The green smoothly transitions to yellow. */
-            12.5% { background-color: #fef08a; } /* 2.5% of 600s = 15s. Fade is complete. */
+        .component-pill {
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            color: white;
+            text-align: center;
+        }
+        .component-redcell { background-color: #dc2626; }
+        .component-ffp { background-color: #d97706; }
+        .component-cryoprecipitate { background-color: #0284c7; }
+        .component-unknown { background-color: #64748b; }
+        
+        .highlight-blank {
+            background-color: #fef9c3 !important;
+            outline: 2px solid #facc15;
+        }
 
-            /* --- Phase 3: Solid Yellow (Long hold) --- */
-            /* The request stays yellow for a long time to remain visible. */
-            50%  { background-color: #fef08a; }
-
-            /* --- Phase 4: Fade to Transparent (Final phase) --- */
-            /* The yellow highlight fades away, and the row returns to normal. */
-            100% { background-color: transparent; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .new-row {
+            animation: fadeIn 0.5s ease-out;
+            background-color: #cffafe !important;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
     </style>
 </head>
 <body class="p-4 md:p-8">
-
-    <div id="notification-toast" class="notification-toast bg-green-500 text-white p-4 rounded-lg shadow-lg max-w-sm">
-        <div class="flex items-center">
-            <div class="flex-shrink-0">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </div>
-            <div class="ml-3">
-                <p class="font-medium" id="toast-message">คำขอใหม่เข้ามาแล้ว!</p>
-            </div>
-            <button onclick="hideNotification()" class="ml-4 text-white hover:text-gray-200">
-                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                </svg>
-            </button>
-        </div>
-    </div>
-
     <div class="max-w-7xl mx-auto">
-        <header class="mb-8">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-4xl font-bold text-gray-800">Blood Bank Dashboard</h1>
-                    <p class="text-gray-500">ภาพรวมและรายการแจ้งใช้เลือดทั้งหมด</p>
-                </div>
-                <div class="text-right">
-                    <div class="flex items-center justify-end mb-2">
-                        <div id="connection-status" class="status-indicator offline"></div>
-                        <span id="connection-text" class="text-sm text-gray-500">รอการเชื่อมต่อ...</span>
-                    </div>
-                    <p class="text-xs text-gray-400">อัพเดทล่าสุด: <span id="last-update">-</span></p>
-                </div>
+        <header class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800">Blood Request Dashboard</h1>
+                <p class="text-slate-500">Real-time requests from hospital wards</p>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 text-lg font-semibold">
+                <div class="w-4 h-4 rounded-full bg-amber-400 animate-pulse"></div>
+                <span>Connecting...</span>
             </div>
         </header>
 
-        <div class="mb-6 border-b border-gray-200">
-            <nav class="flex space-x-4" aria-label="Tabs">
-                <button type="button" class="tab-button active" data-tab="dashboard">ภาพรวม (Dashboard)</button>
-                <button type="button" class="tab-button" data-tab="requests">รายการทั้งหมด (All Requests)</button>
-            </nav>
-        </div>
-
-        <main>
-            <div id="dashboard-content" class="tab-content active">
-                <div id="dashboard-loader" class="text-center p-8"><div class="loader"></div></div>
-                <div id="dashboard-grid" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="stat-card p-6 text-center">
-                        <p class="text-gray-500">คำขอวันนี้</p>
-                        <h2 id="stat-today" class="text-4xl font-bold text-red-600">0</h2>
-                    </div>
-                    <div class="stat-card p-6 text-center">
-                        <p class="text-gray-500">รอการยืนยัน</p>
-                        <h2 id="stat-submitted" class="text-4xl font-bold text-amber-600">0</h2>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-2">
-                        <canvas id="bloodTypeChart"></canvas>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4">
-                        <canvas id="wardChart"></canvas>
-                    </div>
-                    <div class="stat-card p-6 md:col-span-2 lg:col-span-4">
-                        <h3 class="font-semibold text-lg mb-4">5 คำขอล่าสุด (ที่ยืนยันแล้ว)</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left table-auto">
-                                <tbody id="recent-requests-list">
-                                    <tr><td colspan="4" class="p-2 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="requests-content" class="tab-content">
-                <div class="stat-card p-6">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        <input id="search-input" type="text" placeholder="ค้นหา HN หรือชื่อผู้ป่วย..." class="w-full p-2 border rounded">
-                        <select id="status-filter" class="w-full p-2 border rounded">
-                            <option value="">ทุกสถานะ</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="initiated">Initiated</option>
-                            <option value="pending">Pending</option>
-                        </select>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left table">
-                            <thead><tr>
-                                <th class="p-3">Request ID</th>
-                                <th class="p-3">วันที่</th>
-                                <th class="p-3">HN</th>
-                                <th class="p-3">ชื่อผู้ป่วย</th>
-                                <th class="p-3">หอผู้ป่วย</th>
-                                <th class="p-3">ส่วนประกอบ</th>
-                                <th class="p-3">สถานะ</th>
-                            </tr></thead>
-                            <tbody id="requests-table-body">
-                                <tr><td colspan="7" class="text-center p-8 text-gray-500">กำลังโหลดข้อมูล...</td></tr>
-                            </tbody>
-                        </table>
-                        <div id="table-loader" class="text-center p-8 hidden"><div class="loader"></div></div>
-                    </div>
-                    <div id="pagination-controls" class="flex justify-between items-center mt-4"></div>
-                </div>
+        <main class="bg-white rounded-xl shadow-md overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-slate-600">
+                    <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Patient / HN</th>
+                            <th scope="col" class="px-6 py-3">Component</th>
+                            <th scope="col" class="px-6 py-3">Details</th>
+                            <th scope="col" class="px-6 py-3">Ward</th>
+                            <th scope="col" class="px-6 py-3">Delivery</th>
+                            <th scope="col" class="px-6 py-3">Status</th>
+                            <th scope="col" class="px-6 py-3">Requested At</th>
+                            <th scope="col" class="px-6 py-3">Last Update</th>
+                        </tr>
+                    </thead>
+                    <tbody id="requests-table-body">
+                        <!-- Rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
             </div>
         </main>
     </div>
 
     <script>
-        let currentTab = 'dashboard';
-        let requestsPage = 1;
-        let chartInstances = {};
-        let eventSource = null;
-        let refreshInterval = null;
-
         document.addEventListener('DOMContentLoaded', () => {
-            initializeApp();
+            fetchInitialData();
+            connectToSSE();
         });
 
-        function initializeApp() {
-            setupEventListeners();
-            loadInitialData();
-            setTimeout(setupServerSentEvents, 1000);
-        }
+        const API_BASE_URL = '/api'; // Assumes the API is on the same domain
 
-        function setupEventListeners() {
-            document.querySelectorAll('.tab-button').forEach(t => {
-                t.addEventListener('click', () => switchTab(t.dataset.tab));
-            });
-            const searchInput = document.getElementById('search-input');
-            searchInput.addEventListener('input', debounce(() => {
-                requestsPage = 1;
-                fetchRequests();
-            }, 500));
-            const statusFilter = document.getElementById('status-filter');
-            statusFilter.addEventListener('change', () => {
-                requestsPage = 1;
-                fetchRequests();
-            });
-        }
-
-        function setupServerSentEvents() {
-            if (eventSource) {
-                eventSource.close();
+        async function fetchInitialData() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/get_requests`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                const tableBody = document.getElementById('requests-table-body');
+                tableBody.innerHTML = ''; // Clear any existing rows
+                data.requests.forEach(request => {
+                    const row = createRequestRow(request);
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Error fetching initial data:", error);
+                const tableBody = document.getElementById('requests-table-body');
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500 font-semibold">Failed to load initial requests. Check API connection.</td></tr>`;
             }
-            eventSource = new EventSource('/api/sse-updates');
+        }
+
+        function connectToSSE() {
+            const statusDiv = document.getElementById('connection-status');
+            const eventSource = new EventSource(`${API_BASE_URL}/sse-updates`);
 
             eventSource.onopen = () => {
-                console.log('✅ SSE connected.');
-                updateConnectionStatus(true);
-                if (refreshInterval) {
-                    clearInterval(refreshInterval);
-                    refreshInterval = null;
-                }
+                console.log("SSE Connection Opened");
+                statusDiv.innerHTML = `<div class="w-4 h-4 rounded-full bg-green-500"></div><span>Connected</span>`;
+            };
+
+            eventSource.onerror = () => {
+                console.error("SSE Connection Error. Reconnecting...");
+                statusDiv.innerHTML = `<div class="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div><span>Disconnected. Retrying...</span>`;
+                eventSource.close();
+                setTimeout(connectToSSE, 5000); // Reconnect after 5 seconds
             };
 
             eventSource.onmessage = (event) => {
-                // Ensure status is shown as online when a message is received
-                if (document.getElementById('connection-status').classList.contains('online') === false) {
-                    updateConnectionStatus(true);
-                }
-                // Ignore empty messages or heartbeats without a proper type
-                if (!event.data) return;
                 const data = JSON.parse(event.data);
-                if (data.type === 'heartbeat' || data.type === 'connected') return;
+                console.log("SSE Message Received:", data);
 
-                handleRealTimeUpdate(data);
-            };
-
-            // --- CHANGED: Smarter error handling ---
-            eventSource.onerror = (err) => {
-                console.warn('SSE connection error. The browser will attempt to reconnect.', err);
-                // The EventSource object's readyState will be CONNECTING while it attempts to reconnect
-                if (eventSource.readyState === EventSource.CONNECTING) {
-                    updateConnectionStatus('reconnecting');
-                } else if (eventSource.readyState === EventSource.CLOSED) {
-                    // If it's permanently closed, then fall back to polling
-                    console.error('❌ SSE connection permanently closed. Falling back to polling.');
-                    updateConnectionStatus(false);
-                    if (!refreshInterval) {
-                        refreshInterval = setInterval(() => loadInitialData(true), 30000);
-                    }
+                if (data.type === 'new_request') {
+                    handleNewRequest(data);
+                } else if (data.type === 'status_update') {
+                    handleStatusUpdate(data);
                 }
             };
         }
-        
-        function updateConnectionStatus(status) {
-            const statusIndicator = document.getElementById('connection-status');
-            const connectionText = document.getElementById('connection-text');
-            if (status === true) {
-                statusIndicator.className = 'status-indicator online';
-                connectionText.textContent = 'เชื่อมต่อแล้ว (Real-time)';
-            } else if (status === 'reconnecting') {
-                statusIndicator.className = 'status-indicator reconnecting';
-                connectionText.textContent = 'กำลังเชื่อมต่อใหม่...';
-            } else {
-                statusIndicator.className = 'status-indicator offline';
-                connectionText.textContent = 'เชื่อมต่อล้มเหลว (Polling mode)';
+
+        function handleNewRequest(requestData) {
+            const tableBody = document.getElementById('requests-table-body');
+            const existingRow = document.getElementById(`request-${requestData.request_id}`);
+            if (existingRow) return; // Avoid duplicates
+
+            const row = createRequestRow(requestData);
+            row.classList.add('new-row');
+            tableBody.prepend(row);
+
+            // Remove highlight after a few seconds
+            setTimeout(() => row.classList.remove('new-row'), 5000);
+        }
+
+        function handleStatusUpdate(updateData) {
+            const row = document.getElementById(`request-${updateData.request_id}`);
+            if (!row) return;
+
+            const statusCell = row.querySelector('.status-cell');
+            const lastUpdateCell = row.querySelector('.last-update-cell');
+            
+            statusCell.innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
+            lastUpdateCell.textContent = formatDateTime(updateData.updated_at);
+
+            row.classList.add('new-row');
+            setTimeout(() => row.classList.remove('new-row'), 3000);
+        }
+
+        function createRequestRow(request) {
+            const row = document.createElement('tr');
+            row.id = `request-${request.request_id}`;
+            row.className = 'bg-white border-b hover:bg-slate-50';
+
+            const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
+            
+            const bloodType = request.blood_type || requestData.bloodType || 'unknown';
+            if (!request.blood_type) {
+                row.classList.add('highlight-blank');
             }
+
+            row.innerHTML = `
+                <td class="px-6 py-4 font-bold text-slate-900">
+                    <div>${requestData.patientName || 'N/A'}</div>
+                    <div class="font-normal text-slate-500">${requestData.hn || 'No HN'}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="component-pill component-${bloodType.toLowerCase()}">${bloodType}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div>${requestData.subtype || 'N/A'}</div>
+                    <div class="font-semibold">${requestData.quantity || '0'} Units</div>
+                </td>
+                <td class="px-6 py-4">${requestData.wardName || 'N/A'}</td>
+                <td class="px-6 py-4">
+                    <div>${requestData.deliveryLocation || 'N/A'}</div>
+                    <div class="font-semibold text-sky-700">${requestData.deliveryTime || ''}</div>
+                </td>
+                <td class="px-6 py-4 status-cell">
+                    ${createStatusDropdown(request.request_id, request.status)}
+                </td>
+                <td class="px-6 py-4 requested-at-cell">${formatDateTime(request.created_at)}</td>
+                <td class="px-6 py-4 last-update-cell">${formatDateTime(request.updated_at)}</td>
+            `;
+
+            // Add event listener for the dropdown in this row
+            row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
+            return row;
         }
 
-        function handleRealTimeUpdate(data) {
-            console.log('📡 SSE Update Received:', data);
-            updateLastUpdateTime();
-
-            if (data.type === 'new_request') {
-                showNotification(`คำขอใหม่: ${data.request_id}`, 'success');
-            } else if (data.type === 'status_update') {
-                showNotification(`อัพเดทสถานะ: ${data.request_id}`, 'info');
-            }
-
-            if (currentTab === 'dashboard') {
-                fetchDashboardSummary(true);
-            } else if (currentTab === 'requests') {
-                fetchRequests(true);
-            }
-        }
-        
-        function showNotification(message, type = 'success') {
-            const toast = document.getElementById('notification-toast');
-            const messageEl = document.getElementById('toast-message');
-            messageEl.textContent = message;
-            toast.className = `notification-toast ${type === 'success' ? 'bg-green-500' : 'bg-blue-500'} text-white p-4 rounded-lg shadow-lg max-w-sm show`;
-            setTimeout(() => hideNotification(), 5000);
+        function createStatusDropdown(requestId, currentStatus) {
+            const statuses = ['pending', 'submitted', 'in_progress', 'delivered', 'cancelled'];
+            let options = '';
+            statuses.forEach(s => {
+                const selected = s === currentStatus ? 'selected' : '';
+                options += `<option value="${s}" ${selected}>${s.replace('_', ' ')}</option>`;
+            });
+            return `
+                <select data-id="${requestId}" class="status-dropdown status-pill status-${currentStatus} border-none outline-none appearance-none cursor-pointer p-2 pr-8 rounded-full">
+                    ${options}
+                </select>
+            `;
         }
 
-        function hideNotification() {
-            const toast = document.getElementById('notification-toast');
-            toast.classList.replace('show', 'hide');
-        }
+        async function handleStatusChange(event) {
+            const selectElement = event.target;
+            const requestId = selectElement.dataset.id;
+            const newStatus = selectElement.value;
 
-        function loadInitialData(isBackgroundRefresh = false) {
-            updateLastUpdateTime();
-            if (currentTab === 'dashboard') {
-                fetchDashboardSummary(isBackgroundRefresh);
-            } else {
-                fetchRequests(isBackgroundRefresh);
-            }
-        }
-
-        function switchTab(tabName) {
-            currentTab = tabName;
-            requestsPage = 1;
-            document.querySelectorAll('.tab-button').forEach(b =>
-                b.classList.toggle('active', b.dataset.tab === tabName)
-            );
-            document.querySelectorAll('.tab-content').forEach(c =>
-                c.classList.toggle('active', c.id === `${tabName}-content`)
-            );
-            loadInitialData();
-        }
-
-        function updateLastUpdateTime() {
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('th-TH');
-        }
-
-        async function fetchAPI(url) {
-            const response = await fetch(url);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'API request failed' }));
-                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
-        }
-
-        async function fetchDashboardSummary(isBackgroundRefresh = false) {
-            const loader = document.getElementById('dashboard-loader');
-            const grid = document.getElementById('dashboard-grid');
-
-            if (!isBackgroundRefresh) {
-                grid.classList.add('hidden');
-                loader.style.display = 'block';
-            }
+            selectElement.className = `status-dropdown status-pill status-${newStatus} border-none outline-none appearance-none cursor-pointer p-2 pr-8 rounded-full`;
 
             try {
-                const data = await fetchAPI('/api/dashboard?action=get_summary');
-                renderDashboard(data);
-                if (isBackgroundRefresh) {
-                    animateUpdate('dashboard');
+                const response = await fetch(`${API_BASE_URL}/update_status`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ request_id: requestId, status: newStatus })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to update status on the server.');
                 }
+                console.log(`Successfully sent status update for ${requestId} to ${newStatus}`);
             } catch (error) {
-                console.error('Dashboard fetch error:', error);
-                if (!isBackgroundRefresh) {
-                    loader.innerHTML = `<p class="text-red-500">เกิดข้อผิดพลาด: ${error.message}</p>`;
-                }
-            } finally {
-                if (!isBackgroundRefresh) {
-                    grid.classList.remove('hidden');
-                    loader.style.display = 'none';
-                }
+                console.error("Error updating status:", error);
+                // Optionally revert the dropdown on failure
+                // fetchInitialData(); // Or just revert this one element
             }
         }
 
-        async function fetchRequests(isBackgroundRefresh = false) {
-            const search = document.getElementById('search-input').value;
-            const status = document.getElementById('status-filter').value;
-            const tableBody = document.getElementById('requests-table-body');
-            const loader = document.getElementById('table-loader');
-
-            if (!isBackgroundRefresh) {
-                tableBody.innerHTML = '';
-                document.getElementById('pagination-controls').innerHTML = '';
-                loader.style.display = 'block';
-            }
-            
-            const existingRequestIds = (isBackgroundRefresh && requestsPage === 1 && !search && !status)
-                ? new Set(Array.from(tableBody.querySelectorAll('tr')).map(tr => tr.cells[0]?.textContent))
-                : null;
-
+        function formatDateTime(isoString) {
+            if (!isoString) return 'N/A';
             try {
-                const data = await fetchAPI(`/api/dashboard?action=get_requests&page=${requestsPage}&search=${encodeURIComponent(search)}&status=${status}`);
-                renderRequestsTable(data, existingRequestIds);
-                renderPagination(data);
-                if (isBackgroundRefresh) {
-                    animateUpdate('requests');
-                }
-            } catch (error) {
-                console.error('Requests fetch error:', error);
-                if (!isBackgroundRefresh) {
-                    tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-red-500">เกิดข้อผิดพลาด: ${error.message}</td></tr>`;
-                }
-            } finally {
-                if (!isBackgroundRefresh) {
-                    loader.style.display = 'none';
-                }
+                const date = new Date(isoString);
+                return date.toLocaleString('en-GB', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                }).replace(',', '');
+            } catch (e) {
+                return isoString;
             }
         }
-
-        function animateUpdate(section) {
-            const elements = section === 'dashboard'
-                ? document.querySelectorAll('#dashboard-grid .stat-card')
-                : [document.querySelector('#requests-content .stat-card')];
-            
-            elements.forEach(el => {
-                if (!el) return;
-                el.classList.add('updating');
-                setTimeout(() => el.classList.remove('updating'), 1000);
-            });
-        }
-        
-        function renderDashboard(data) {
-            animateNumberChange(document.getElementById('stat-today'), data.requests_today || 0);
-            animateNumberChange(document.getElementById('stat-submitted'), data.submitted_count || 0);
-
-            const recentList = document.getElementById('recent-requests-list');
-            recentList.innerHTML = data.recent_requests.length > 0
-                ? data.recent_requests.map(req => `
-                    <tr class="border-b">
-                        <td class="p-2 font-mono text-xs">${req.request_id}</td>
-                        <td class="p-2">${req.patient_name || '-'}</td>
-                        <td class="p-2">${req.ward_name || '-'}</td>
-                        <td class="p-2 text-gray-500">${formatDateTime(req.created_at)}</td>
-                    </tr>`).join('')
-                : '<tr><td colspan="4" class="p-2 text-gray-500">ไม่มีข้อมูลล่าสุด</td></tr>';
-
-            renderChart('bloodTypeChart', 'pie', data.by_blood_type.map(d => d.component_type), data.by_blood_type.map(d => d.count), 'จำแนกตามประเภทเลือด (ที่ยืนยันแล้ว)');
-            renderChart('wardChart', 'bar', data.by_ward.map(d => d.ward_name), data.by_ward.map(d => d.count), '10 หอผู้ป่วยที่ขอใช้เลือดสูงสุด (ที่ยืนยันแล้ว)');
-        }
-
-        function animateNumberChange(element, newValue) {
-            const currentValue = parseInt(element.textContent.replace(/,/g, '')) || 0;
-            if (currentValue === newValue) return;
-            const duration = 500;
-            const stepTime = 20;
-            const steps = duration / stepTime;
-            const increment = (newValue - currentValue) / steps;
-            let current = currentValue;
-            const timer = setInterval(() => {
-                current += increment;
-                if ((increment > 0 && current >= newValue) || (increment < 0 && current <= newValue)) {
-                    element.textContent = newValue.toLocaleString();
-                    clearInterval(timer);
-                } else {
-                    element.textContent = Math.round(current).toLocaleString();
-                }
-            }, stepTime);
-        }
-
-        function renderRequestsTable(data, existingRequestIds = null) {
-            const tableBody = document.getElementById('requests-table-body');
-            if (!data.requests || data.requests.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="7" class="text-center p-8 text-gray-500">ไม่พบข้อมูล</td></tr>`;
-                return;
-            }
-
-            const newRowsHtml = data.requests.map(req => {
-                const component = req.request_data?.bloodType
-                    ? `${req.request_data.bloodType.toUpperCase()} (${req.request_data.quantity || 'N/A'} U)`
-                    : req.blood_type || '';
-                
-                // Determine if the row is new for highlighting purposes
-                const isNew = existingRequestIds ? !existingRequestIds.has(req.request_id) : false;
-                
-                return `
-                <tr class="border-b ${isNew ? 'new-row' : ''}" data-request-id="${req.request_id}">
-                    <td class="p-3 font-mono text-xs">${req.request_id}</td>
-                    <td class="p-3">${formatDateTime(req.created_at)}</td>
-                    <td class="p-3">${req.hospital_number || '-'}</td>
-                    <td class="p-3">${req.patient_name || '-'}</td>
-                    <td class="p-3">${req.ward_name || '-'}</td>
-                    <td class="p-3">${component}</td>
-                    <td class="p-3">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(req.status)}">
-                            ${req.status}
-                        </span>
-                    </td>
-                </tr>`;
-            }).join('');
-            
-            if (existingRequestIds) {
-                // If it's a background refresh, prepend new rows and update existing ones
-                tableBody.insertAdjacentHTML('afterbegin', newRowsHtml);
-            } else {
-                // For a full page load or filter change, just replace the content
-                tableBody.innerHTML = newRowsHtml;
-            }
-        }
-
-
-        function renderPagination(data) {
-            const controls = document.getElementById('pagination-controls');
-            if (!data || data.total_pages <= 1) {
-                controls.innerHTML = ''; return;
-            }
-            controls.innerHTML = `
-                <span class="text-sm text-gray-700">
-                    หน้า ${data.current_page} / ${data.total_pages} (ทั้งหมด ${data.total_records} รายการ)
-                </span>
-                <div>
-                    <button onclick="changePage(-1)" ${data.current_page <= 1 ? 'disabled' : ''}
-                        class="px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                        ก่อนหน้า
-                    </button>
-                    <button onclick="changePage(1)" ${data.current_page >= data.total_pages ? 'disabled' : ''}
-                        class="ml-2 px-3 py-1 border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
-                        ถัดไป
-                    </button>
-                </div>`;
-        }
-
-        function changePage(dir) {
-            requestsPage += dir;
-            fetchRequests();
-        };
-
-        const getStatusClass = (s) => ({
-            'submitted': 'bg-green-100 text-green-800',
-            'pending': 'bg-amber-100 text-amber-800',
-            'initiated': 'bg-blue-100 text-blue-800'
-        }[s] || 'bg-gray-100 text-gray-800');
-
-        const formatDateTime = (iso) => iso
-            ? new Date(iso).toLocaleString('th-TH', {
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            })
-            : '-';
-
-        const debounce = (fn, delay) => {
-            let t;
-            return (...args) => {
-                clearTimeout(t);
-                t = setTimeout(() => fn(...args), delay);
-            };
-        };
-
-        function renderChart(canvasId, type, labels, data, title) {
-            if (chartInstances[canvasId]) chartInstances[canvasId].destroy();
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            chartInstances[canvasId] = new Chart(ctx, {
-                type: type,
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'จำนวนคำขอ',
-                        data: data,
-                        backgroundColor: ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6', '#8b5cf6', '#d946ef'],
-                        borderColor: '#fff',
-                        borderWidth: type === 'pie' ? 2 : 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: { position: type === 'pie' ? 'top' : 'none' },
-                        title: { display: true, text: title, font: { size: 16 } }
-                    },
-                    animation: { duration: 1000, easing: 'easeInOutQuart' }
-                }
-            });
-        }
-
-        window.addEventListener('beforeunload', () => {
-            if (eventSource) eventSource.close();
-            if (refreshInterval) clearInterval(refreshInterval);
-        });
     </script>
 </body>
 </html>
