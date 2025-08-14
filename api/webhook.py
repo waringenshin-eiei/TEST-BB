@@ -163,7 +163,8 @@ def send_form_link(user_id):
 def notify_dashboard_update(event_type, data):
     event_data = {'type': event_type, 'timestamp': datetime.now(THAILAND_TZ).isoformat(), **data}
     try:
-        sse_queue.put_nowait(json.dumps(event_data, default=str)) # Use default=str for serialization
+        # Use default=str to handle non-serializable types like datetime
+        sse_queue.put_nowait(json.dumps(event_data, default=str)) 
     except queue.Full:
         print("⚠️ SSE queue is full, dropping event")
 
@@ -218,11 +219,11 @@ class handler(BaseHTTPRequestHandler):
             
             with get_db_connection() as conn:
                 if not conn: raise ConnectionError("Database connection failed")
-                with conn.cursor() as cur:
+                with conn.cursor(row_factory=dict_row) as cur:
                     if not user_profile:
                         print(f"INFO: User {line_user_id} not found. Creating new user record.")
                         cur.execute("INSERT INTO users (line_user_id) VALUES (%s) RETURNING user_id", (line_user_id,))
-                        new_user_uuid = str(cur.fetchone()[0])
+                        new_user_uuid = str(cur.fetchone()['user_id'])
                         user_profile = {'user_uuid': new_user_uuid}
                         if redis_client: redis_client.set(f"user_profile:{line_user_id}", json.dumps(user_profile), ex=86400)
                     
@@ -232,7 +233,7 @@ class handler(BaseHTTPRequestHandler):
                     cur.execute("SELECT ward_id FROM ward_directory WHERE ward_name = %s", (selected_ward_name,))
                     ward_result = cur.fetchone()
                     if not ward_result: raise ValueError(f"Ward '{selected_ward_name}' not found in directory.")
-                    ward_id_for_request = ward_result[0]
+                    ward_id_for_request = ward_result['ward_id']
                     
                     sql_insert_request = """
                         INSERT INTO blood_requests (user_id, ward_id, schedule_id, status, blood_type, patient_name, hospital_number, delivery_location, reporter_name, blood_details, request_data)
@@ -249,24 +250,14 @@ class handler(BaseHTTPRequestHandler):
                     new_request_record = cur.fetchone()
                     conn.commit()
             
-            new_request_id = str(new_request_record[0])
+            new_request_id = str(new_request_record['request_id'])
             print(f"✅ DB insert successful for new request {new_request_id}")
 
             report_data = {**form_data, "request_id": new_request_id}
             flex_message = create_flex_report(report_data)
             send_line_message(line_user_id, flex_message)
             
-            # The full record is needed for the dashboard to render a new row correctly
-            full_request_data = {
-                'request_id': new_request_id,
-                'status': 'pending',
-                'blood_type': form_data.get('bloodType'),
-                'request_data': form_data,
-                'created_at': new_request_record[13], # created_at column
-                'updated_at': new_request_record[14]  # updated_at column
-            }
-            notify_dashboard_update('new_request', full_request_data)
-
+            notify_dashboard_update('new_request', new_request_record)
             self._send_response(200, {"status": "success", "request_id": new_request_id})
 
         except Exception as e:
@@ -285,9 +276,8 @@ class handler(BaseHTTPRequestHandler):
                         WHERE status IN ('pending', 'submitted', 'in_progress')
                         ORDER BY created_at DESC LIMIT 100;
                     """)
-                    # FIX: This is the corrected part. fetchall() returns a list of dict-like objects
-                    # that can be directly serialized by json.dumps with a default handler.
-                    requests = cur.fetchall()
+                    # This ensures the list of dict-like rows is converted to a proper list of dicts
+                    requests = [dict(row) for row in cur.fetchall()]
             self._send_response(200, {"requests": requests})
         except Exception as e:
             print(f"❌ Get requests error: {e}\n{traceback.format_exc()}")
@@ -304,21 +294,14 @@ class handler(BaseHTTPRequestHandler):
             with get_db_connection() as conn:
                 if not conn: raise ConnectionError("Database connection failed")
                 with conn.cursor(row_factory=dict_row) as cur:
-                    cur.execute("""
-                        UPDATE blood_requests SET status = %s, updated_at = NOW()
-                        WHERE request_id = %s RETURNING *;
-                    """, (new_status, request_id))
+                    cur.execute("UPDATE blood_requests SET status = %s, updated_at = NOW() WHERE request_id = %s RETURNING *;", (new_status, request_id))
                     updated_request = cur.fetchone()
                     conn.commit()
             
             if updated_request:
                 print(f"✅ Status updated for {request_id} to {new_status}")
-                notify_dashboard_update('status_update', {
-                    'request_id': str(updated_request['request_id']),
-                    'status': updated_request['status'],
-                    'updated_at': updated_request['updated_at']
-                })
-                self._send_response(200, {"status": "success", "request": updated_request})
+                notify_dashboard_update('status_update', dict(updated_request))
+                self._send_response(200, {"status": "success", "request": dict(updated_request)})
             else:
                 self._send_response(404, {"error": "Request not found"})
         except Exception as e:
@@ -364,5 +347,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
         if body is not None:
-            # Use default=str to handle non-serializable types like datetime and UUID
             self.wfile.write(json.dumps(body, ensure_ascii=False, default=str).encode('utf-8'))
