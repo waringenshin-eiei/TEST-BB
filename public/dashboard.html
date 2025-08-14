@@ -7,6 +7,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* --- Basic Reset & Global Styles --- */
+        :root {
+            --input-height: calc(1.5em + 1.5rem + 2px);
+        }
         *, ::before, ::after {
             box-sizing: border-box;
             border-width: 0;
@@ -21,7 +24,7 @@
         body {
             margin: 0;
             font-family: 'Sarabun', sans-serif;
-            background-color: #f8f9fa; /* Simple light background */
+            background-color: #f8f9fa;
             color: #212529;
             padding: 1.5rem;
         }
@@ -34,23 +37,10 @@
             padding: 1.5rem;
             margin-bottom: 2rem;
         }
-        .page-header h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #343a40;
-        }
-        .page-header p {
-            color: #6c757d;
-        }
-        #connection-status span {
-            font-weight: 600;
-        }
-        .status-dot {
-            width: 1rem;
-            height: 1rem;
-            border-radius: 9999px;
-            display: inline-block;
-        }
+        .page-header h1 { font-size: 2rem; font-weight: 700; color: #343a40; }
+        .page-header p { color: #6c757d; }
+        #connection-status span { font-weight: 600; }
+        .status-dot { width: 1rem; height: 1rem; border-radius: 9999px; display: inline-block; }
         .status-connected { background-color: #28a745; }
         .status-connecting { background-color: #ffc107; }
         .status-disconnected { background-color: #dc3545; }
@@ -63,31 +53,31 @@
             text-align: center;
             border: 1px solid #e9ecef;
         }
-        .stat-card .count {
-            font-size: 1.75rem;
-            font-weight: 700;
-        }
-        .stat-card .label {
-            font-size: 0.875rem;
-            color: #6c757d;
-            text-transform: uppercase;
-        }
+        .stat-card .count { font-size: 1.75rem; font-weight: 700; }
+        .stat-card .label { font-size: 0.875rem; color: #6c757d; text-transform: uppercase; }
 
-        /* --- Search Bar --- */
-        #hn-search {
-            width: 100%;
-            max-width: 400px;
+        /* --- Filter Controls --- */
+        .filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .filter-control {
             padding: 0.75rem 1rem;
             border-radius: 0.375rem;
             border: 1px solid #ced4da;
             font-size: 1rem;
+            background-color: #fff;
+            height: var(--input-height);
             transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
         }
-        #hn-search:focus {
+        .filter-control:focus {
             border-color: #86b7fe;
             outline: 0;
             box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
         }
+        #hn-search { width: 100%; max-width: 350px; }
 
         /* --- Main Table Container --- */
         .table-container {
@@ -97,77 +87,24 @@
             border: 1px solid #dee2e6;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead { background-color: #f8f9fa; color: #495057; font-weight: 600; font-size: 0.875rem; }
+        th { padding: 1rem; border-bottom: 2px solid #dee2e6; }
+        tbody tr { border-bottom: 1px solid #e9ecef; transition: background-color 0.2s ease; }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background-color: #f1f3f5; }
+        td { padding: 1rem; vertical-align: middle; color: #495057; }
+        .hn-cell { font-family: 'Courier New', monospace; font-weight: 600; color: #0d6efd; }
+        .unit-cell { text-align: center; font-weight: 600; }
 
-        /* --- Table Header --- */
-        thead {
-            background-color: #f8f9fa;
-            color: #495057;
-            font-weight: 600;
-            font-size: 0.875rem;
-        }
-        th {
-            padding: 1rem;
-            border-bottom: 2px solid #dee2e6;
-        }
-
-        /* --- Table Body & Rows --- */
-        tbody tr {
-            border-bottom: 1px solid #e9ecef;
-            transition: background-color 0.2s ease;
-        }
-        tbody tr:last-child {
-            border-bottom: none;
-        }
-        tbody tr:hover {
-            background-color: #f1f3f5;
-        }
-        td {
-            padding: 1rem;
-            vertical-align: middle;
-            color: #495057;
-        }
-        .hn-cell {
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-            color: #0d6efd;
-        }
-        
         /* --- Component & Status Pills (Simplified) --- */
-        .pill {
-            padding: 0.35em 0.8em;
-            border-radius: 0.25rem;
-            font-weight: 600;
-            font-size: 0.8rem;
-            text-align: center;
-            display: inline-block;
-            min-width: 100px;
-        }
+        .pill { padding: 0.35em 0.8em; border-radius: 0.25rem; font-weight: 600; font-size: 0.8rem; text-align: center; display: inline-block; min-width: 100px; }
         .component-redcell { background-color: #fde8e8; color: #9b1c1c; }
         .component-ffp { background-color: #fffbeb; color: #92400e; }
         .component-cryoprecipitate { background-color: #e0f2fe; color: #0c4a6e; }
         .component-unknown { background-color: #e2e8f0; color: #334155; }
 
-        .status-select {
-            border: 1px solid;
-            padding: 0.35em 0.8em;
-            border-radius: 0.25rem;
-            font-weight: 600;
-            font-size: 0.8rem;
-            min-width: 120px;
-            cursor: pointer;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background-repeat: no-repeat;
-            background-position: right 0.5rem center;
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
-            padding-right: 2rem;
-        }
+        .status-select { border: 1px solid; padding: 0.35em 0.8em; border-radius: 0.25rem; font-weight: 600; font-size: 0.8rem; min-width: 120px; cursor: pointer; -webkit-appearance: none; -moz-appearance: none; appearance: none; background-repeat: no-repeat; background-position: right 0.5rem center; background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e"); padding-right: 2rem; }
         .status-pending { background-color: #fffbeb; color: #713f12; border-color: #fcd34d; }
         .status-in_progress { background-color: #eef2ff; color: #3730a3; border-color: #a5b4fc; }
         .status-delivered { background-color: #f0fdf4; color: #15803d; border-color: #86efac; }
@@ -179,13 +116,8 @@
         .time-old { color: #64748b; }
 
         /* --- New Row Highlight --- */
-        @keyframes fadeInHighlight {
-            from { background-color: #d1e7dd; }
-            to { background-color: transparent; }
-        }
-        .new-row-highlight {
-            animation: fadeInHighlight 2s ease-out;
-        }
+        @keyframes fadeInHighlight { from { background-color: #d1e7dd; } to { background-color: transparent; } }
+        .new-row-highlight { animation: fadeInHighlight 2s ease-out; }
 
         /* --- Utility Classes --- */
         .flex { display: flex; }
@@ -193,7 +125,6 @@
         .justify-between { justify-content: space-between; }
         .gap-2 { gap: 0.5rem; }
         .gap-4 { gap: 1rem; }
-        .mb-4 { margin-bottom: 1rem; }
         .mb-6 { margin-bottom: 1.5rem; }
         .text-center { text-align: center; }
         .grid { display: grid; }
@@ -201,7 +132,7 @@
     </style>
 </head>
 <body>
-    <div style="max-width: 1280px; margin: auto;">
+    <div style="max-width: 1400px; margin: auto;">
         
         <header class="page-header">
             <div class="flex justify-between items-center mb-6">
@@ -222,8 +153,16 @@
             </div>
         </header>
 
-        <div class="mb-4">
-            <input type="search" id="hn-search" placeholder="🔍 Search by HN...">
+        <div class="filter-container">
+            <input type="search" id="hn-search" placeholder="🔍 Search by HN..." class="filter-control">
+            <select id="status-filter" class="filter-control">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+            <input type="date" id="date-filter" class="filter-control">
         </div>
 
         <main class="table-container">
@@ -234,7 +173,8 @@
                             <th>HN</th>
                             <th>Patient Name</th>
                             <th class="text-center">Component</th>
-                            <th>Details</th>
+                            <th>Subtype</th>
+                            <th class="text-center">Unit(s)</th>
                             <th>Ward</th>
                             <th>Delivery</th>
                             <th class="text-center">Status</th>
@@ -258,24 +198,32 @@
             fetchInitialData();
             connectToSSE();
 
-            const searchInput = document.getElementById('hn-search');
-            searchInput.addEventListener('input', filterTableByHN);
+            document.getElementById('hn-search').addEventListener('input', applyFilters);
+            document.getElementById('status-filter').addEventListener('change', applyFilters);
+            document.getElementById('date-filter').addEventListener('change', applyFilters);
         });
 
-        function filterTableByHN() {
-            const searchQuery = document.getElementById('hn-search').value.toLowerCase().trim();
+        function applyFilters() {
+            const hnQuery = document.getElementById('hn-search').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('status-filter').value;
+            const dateFilter = document.getElementById('date-filter').value; // YYYY-MM-DD
+
             const tableBody = document.getElementById('requests-table-body');
             const rows = tableBody.getElementsByTagName('tr');
 
             for (const row of rows) {
-                const hnCell = row.cells[0]; // First column is HN
-                if (hnCell) {
-                    const hnValue = (hnCell.textContent || hnCell.innerText).toLowerCase();
-                    if (hnValue.includes(searchQuery)) {
-                        row.style.display = "";
-                    } else {
-                        row.style.display = "none";
-                    }
+                const hnCell = row.cells[0];
+                const rowStatus = row.dataset.status;
+                const rowDate = row.dataset.date;
+
+                const hnMatch = hnCell ? (hnCell.textContent || hnCell.innerText).toLowerCase().includes(hnQuery) : true;
+                const statusMatch = (statusFilter === 'all') || (rowStatus === statusFilter);
+                const dateMatch = (dateFilter === '') || (rowDate === dateFilter);
+
+                if (hnMatch && statusMatch && dateMatch) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
                 }
             }
         }
@@ -297,34 +245,27 @@
                 });
                 
                 updateStats();
+                applyFilters(); // Apply initial filters on load
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 const tableBody = document.getElementById('requests-table-body');
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center" style="padding: 3rem;">⚠️ Failed to load requests. Please check connection.</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="10" class="text-center" style="padding: 3rem;">⚠️ Failed to load requests. Please check connection.</td></tr>`;
             }
         }
 
         function connectToSSE() {
             const statusDiv = document.getElementById('connection-status');
             const eventSource = new EventSource(`${API_BASE_URL}/sse-updates`);
-
-            eventSource.onopen = () => {
-                statusDiv.innerHTML = `<div class="status-dot status-connected"></div><span>Live</span>`;
-            };
-
+            eventSource.onopen = () => { statusDiv.innerHTML = `<div class="status-dot status-connected"></div><span>Live</span>`; };
             eventSource.onerror = () => {
                 statusDiv.innerHTML = `<div class="status-dot status-disconnected"></div><span>Reconnecting...</span>`;
                 eventSource.close();
                 setTimeout(connectToSSE, 5000);
             };
-
             eventSource.onmessage = (event) => {
                 const data = JSON.parse(event.data);
-                if (data.type === 'new_request') {
-                    handleNewRequest(data);
-                } else if (data.type === 'status_update' && !isManualStatusUpdate) {
-                    handleStatusUpdate(data);
-                }
+                if (data.type === 'new_request') handleNewRequest(data);
+                else if (data.type === 'status_update' && !isManualStatusUpdate) handleStatusUpdate(data);
             };
         }
 
@@ -338,19 +279,17 @@
             
             currentRequests.set(requestData.request_id, requestData);
             updateStats();
-            filterTableByHN(); // Ensure new row is visible if it matches search
+            applyFilters(); // Ensure new row visibility respects current filters
         }
 
         function handleStatusUpdate(updateData) {
             const row = document.getElementById(`request-${updateData.request_id}`);
             if (!row) return;
 
-            const statusCell = row.querySelector('.status-cell');
-            const lastUpdateCell = row.querySelector('.last-update-cell');
-            
-            statusCell.innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
-            lastUpdateCell.innerHTML = formatDateTimeWithClass(updateData.updated_at);
-            
+            // Update status and timestamp
+            row.dataset.status = updateData.status;
+            row.querySelector('.status-cell').innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
+            row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(updateData.updated_at);
             row.querySelector('.status-select').addEventListener('change', handleStatusChange);
             
             if (currentRequests.has(updateData.request_id)) {
@@ -360,14 +299,18 @@
                 currentRequests.set(updateData.request_id, request);
             }
             updateStats();
+            applyFilters(); // Re-apply filters as status has changed
         }
 
         function createRequestRow(request) {
             const row = document.createElement('tr');
             row.id = `request-${request.request_id}`;
+            row.dataset.status = request.status;
+            row.dataset.date = request.created_at.split('T')[0]; // Store date as YYYY-MM-DD
 
             const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
             
+            // Extract data with fallbacks
             const bloodType = request.blood_type || requestData.bloodType || 'unknown';
             const patientName = request.patient_name || requestData.patientName || 'N/A';
             const hn = request.hospital_number || requestData.hn || 'N/A';
@@ -376,13 +319,26 @@
             const deliveryTime = request.delivery_time || requestData.deliveryTime || '';
             const bloodDetails = request.blood_details || `${requestData.subtype || 'N/A'} (${requestData.quantity || '0'} Units)`;
 
+            // Parse Subtype and Units from details string
+            let subtype = 'N/A';
+            let units = 'N/A';
+            const detailsRegex = /(.+) \((\d+)\s*Units?\)/i;
+            const match = bloodDetails.match(detailsRegex);
+            if (match) {
+                subtype = match[1].trim();
+                units = match[2];
+            } else {
+                subtype = bloodDetails; // Fallback if format is unexpected
+            }
+
             row.innerHTML = `
                 <td class="hn-cell">${hn}</td>
                 <td>${patientName}</td>
                 <td class="text-center">
                     <div class="pill component-${bloodType.toLowerCase()}">${bloodType.toUpperCase()}</div>
                 </td>
-                <td>${bloodDetails}</td>
+                <td>${subtype}</td>
+                <td class="unit-cell">${units}</td>
                 <td>${wardName}</td>
                 <td>
                     <div>${deliveryLocation}</div>
@@ -407,11 +363,7 @@
                 const displayText = s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
                 options += `<option value="${s}" ${selected}>${displayText}</option>`;
             });
-            return `
-                <select data-id="${requestId}" class="status-select status-${currentStatus}">
-                    ${options}
-                </select>
-            `;
+            return `<select data-id="${requestId}" class="status-select status-${currentStatus}">${options}</select>`;
         }
         
         async function handleStatusChange(event) {
@@ -423,14 +375,19 @@
             selectElement.className = `status-select status-${newStatus}`;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/update_status`, {
+                await fetch(`${API_BASE_URL}/update_status`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ request_id: requestId, status: newStatus })
                 });
 
-                if (!response.ok) throw new Error('Server update failed');
-                
+                const row = document.getElementById(`request-${requestId}`);
+                if (row) {
+                    // Manually update data on the client for immediate feedback
+                    row.dataset.status = newStatus;
+                    row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(new Date().toISOString());
+                }
+
                 if (currentRequests.has(requestId)) {
                     const request = currentRequests.get(requestId);
                     request.status = newStatus;
@@ -438,14 +395,9 @@
                     currentRequests.set(requestId, request);
                 }
                 updateStats();
-                const row = document.getElementById(`request-${requestId}`);
-                if (row) {
-                    row.querySelector('.last-update-cell').innerHTML = formatDateTimeWithClass(new Date().toISOString());
-                }
-
+                applyFilters(); // Re-apply filters after status change
             } catch (error) {
                 console.error("Error updating status:", error);
-                // Revert visual change on error - you might need old status for this
             }
             setTimeout(() => { isManualStatusUpdate = false; }, 1000);
         }
@@ -457,9 +409,7 @@
                 const now = new Date();
                 const diffMinutes = (now - date) / (1000 * 60);
                 
-                const formatted = date.toLocaleString('en-GB', {
-                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false
-                }).replace(',', '');
+                const formatted = date.toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).replace(',', '');
                 
                 let className = 'time-old';
                 if (diffMinutes < 5) className = 'time-fresh';
@@ -474,7 +424,6 @@
         function updateStats() {
             const requests = Array.from(currentRequests.values());
             const today = new Date().toDateString();
-            
             const todayRequests = requests.filter(r => new Date(r.created_at).toDateString() === today);
             
             const pendingCount = requests.filter(r => r.status === 'pending').length;
