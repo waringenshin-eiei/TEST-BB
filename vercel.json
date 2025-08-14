@@ -5,6 +5,14 @@
       "destination": "/api/webhook"
     },
     {
+      "source": "/api/get_requests",
+      "destination": "/api/webhook"
+    },
+    {
+      "source": "/api/update_status",
+      "destination": "/api/webhook"
+    },
+    {
       "source": "/api/sse-updates",
       "destination": "/api/webhook"
     }
