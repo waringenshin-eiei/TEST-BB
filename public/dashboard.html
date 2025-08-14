@@ -8,52 +8,311 @@
     <style>
         /* Pre-compiled Tailwind CSS */
         *,::before,::after{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::before,::after{--tw-content:''}html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:Sarabun,sans-serif;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,samp,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,[type='button'],[type='reset'],[type='submit']{-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type='search']{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dl,dd,h1,h2,h3,h4,h5,h6,hr,figure,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}ol,ul,menu{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}button, [role="button"]{cursor:pointer}:disabled{cursor:default}img,svg,video,canvas,audio,iframe,embed,object{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]{display:none}*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / .5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: }
-        /* Custom Styles */
-        body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; }
-        .status-pill { padding: 4px 12px; border-radius: 9999px; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
-        .status-pending { background-color: #fef9c3; color: #854d0e; }
-        .status-submitted { background-color: #dbeafe; color: #1e40af; }
-        .status-in_progress { background-color: #e0e7ff; color: #3730a3; }
-        .status-delivered { background-color: #dcfce7; color: #166534; }
-        .status-cancelled { background-color: #fee2e2; color: #991b1b; }
-        .component-pill { padding: 5px 12px; border-radius: 8px; font-weight: 600; color: white; text-align: center; }
-        .component-redcell { background-color: #dc2626; }
-        .component-ffp { background-color: #d97706; }
-        .component-cryoprecipitate { background-color: #0284c7; }
-        .component-unknown { background-color: #64748b; }
-        .highlight-blank { background-color: #fef9c3 !important; outline: 2px solid #facc15; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; translateY(0); } }
-        .new-row { animation: fadeIn 0.5s ease-out; background-color: #cffafe !important; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        
+        /* Enhanced Custom Styles */
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+            min-height: 100vh;
+        }
+        
+        /* Header animations */
+        .header-glow {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .header-glow::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 3s infinite;
+        }
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Enhanced connection status */
+        .status-connected { 
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+        .status-connecting { 
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        }
+        .status-disconnected { 
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+        }
+        
+        /* Enhanced component pills */
+        .component-pill { 
+            padding: 8px 16px; 
+            border-radius: 12px; 
+            font-weight: 700; 
+            color: white; 
+            text-align: center; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+        }
+        .component-pill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s ease;
+        }
+        .component-pill:hover::before {
+            left: 100%;
+        }
+        
+        .component-redcell { 
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            border: 2px solid #fca5a5;
+        }
+        .component-ffp { 
+            background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+            border: 2px solid #fcd34d;
+        }
+        .component-cryoprecipitate { 
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border: 2px solid #7dd3fc;
+        }
+        .component-unknown { 
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+            border: 2px solid #cbd5e1;
+        }
+        
+        /* Enhanced status pills */
+        .status-pill { 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-weight: 600; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.8px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .status-pending { 
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+            color: #92400e; 
+            border-color: #f59e0b;
+        }
+        .status-submitted { 
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); 
+            color: #1e40af; 
+            border-color: #3b82f6;
+        }
+        .status-in_progress { 
+            background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
+            color: #3730a3; 
+            border-color: #6366f1;
+        }
+        .status-delivered { 
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); 
+            color: #166534; 
+            border-color: #22c55e;
+        }
+        .status-cancelled { 
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); 
+            color: #991b1b; 
+            border-color: #ef4444;
+        }
+        
+        /* Enhanced table styles */
+        .dashboard-table {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .table-header {
+            background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+            color: white;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .table-row {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .table-row:hover {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        
+        /* New request animations */
+        @keyframes slideInFromTop {
+            0% { 
+                opacity: 0; 
+                transform: translateY(-20px) scale(0.95);
+                box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+            }
+            50% {
+                opacity: 1;
+                transform: translateY(0) scale(1.02);
+                box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+            }
+            100% { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+                box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+            }
+        }
+        
+        @keyframes pulse-border {
+            0%, 100% { border-color: #22c55e; }
+            50% { border-color: #16a34a; }
+        }
+        
+        .new-row { 
+            animation: slideInFromTop 0.8s ease-out;
+            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
+            border: 2px solid #22c55e !important;
+            animation: slideInFromTop 0.8s ease-out, pulse-border 2s ease-in-out 3;
+        }
+        
+        .updated-row {
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+            border: 2px solid #0ea5e9 !important;
+            animation: slideInFromTop 0.6s ease-out;
+        }
+        
+        /* Priority indicators */
+        .priority-urgent {
+            position: relative;
+        }
+        .priority-urgent::before {
+            content: '🚨';
+            position: absolute;
+            left: -25px;
+            top: 50%;
+            transform: translateY(-50%);
+            animation: urgent-blink 1s infinite;
+        }
+        
+        @keyframes urgent-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.3; }
+        }
+        
+        /* Enhanced notification styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            font-weight: 600;
+        }
+        .notification.show {
+            transform: translateX(0);
+        }
+        
+        /* Time indicators */
+        .time-fresh { color: #059669; font-weight: 600; }
+        .time-recent { color: #0ea5e9; }
+        .time-old { color: #64748b; }
+        
+        /* Loading states */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+        }
+        
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Responsive enhancements */
+        @media (max-width: 768px) {
+            .component-pill {
+                padding: 6px 12px;
+                font-size: 0.75rem;
+            }
+            .table-row {
+                font-size: 0.875rem;
+            }
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-3xl font-bold text-slate-800">Blood Request Dashboard</h1>
-                <p class="text-slate-500">Real-time requests from hospital wards</p>
+        <header class="header-glow text-white rounded-xl p-6 mb-8 relative">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-4xl font-bold mb-2">🩸 Blood Request Dashboard</h1>
+                    <p class="text-slate-300 text-lg">Real-time monitoring • Hospital Blood Bank</p>
+                </div>
+                <div id="connection-status" class="flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full">
+                    <div class="w-5 h-5 rounded-full status-connecting"></div>
+                    <span>Connecting...</span>
+                </div>
             </div>
-            <div id="connection-status" class="flex items-center gap-2 text-lg font-semibold">
-                <div class="w-4 h-4 rounded-full bg-amber-400 animate-pulse"></div>
-                <span>Connecting...</span>
+            
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
+                    <div class="text-2xl font-bold" id="pending-count">0</div>
+                    <div class="text-sm text-slate-300">Pending</div>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
+                    <div class="text-2xl font-bold" id="active-count">0</div>
+                    <div class="text-sm text-slate-300">In Progress</div>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
+                    <div class="text-2xl font-bold" id="delivered-count">0</div>
+                    <div class="text-sm text-slate-300">Delivered</div>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
+                    <div class="text-2xl font-bold" id="total-count">0</div>
+                    <div class="text-sm text-slate-300">Total Today</div>
+                </div>
             </div>
         </header>
 
-        <main class="bg-white rounded-xl shadow-md overflow-hidden">
+        <main class="dashboard-table">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-slate-600">
-                    <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                <table class="w-full text-sm text-left">
+                    <thead class="table-header">
                         <tr>
-                            <th scope="col" class="px-6 py-3">Patient / HN</th>
-                            <th scope="col" class="px-6 py-3">Component</th>
-                            <th scope="col" class="px-6 py-3">Details</th>
-                            <th scope="col" class="px-6 py-3">Ward</th>
-                            <th scope="col" class="px-6 py-3">Delivery</th>
-                            <th scope="col" class="px-6 py-3">Status</th>
-                            <th scope="col" class="px-6 py-3">Requested At</th>
-                            <th scope="col" class="px-6 py-3">Last Update</th>
+                            <th scope="col" class="px-6 py-4">🏥 Patient & HN</th>
+                            <th scope="col" class="px-6 py-4">🩸 Component</th>
+                            <th scope="col" class="px-6 py-4">📋 Details</th>
+                            <th scope="col" class="px-6 py-4">🏨 Ward</th>
+                            <th scope="col" class="px-6 py-4">🚚 Delivery</th>
+                            <th scope="col" class="px-6 py-4">📊 Status</th>
+                            <th scope="col" class="px-6 py-4">⏰ Requested</th>
+                            <th scope="col" class="px-6 py-4">🔄 Updated</th>
                         </tr>
                     </thead>
                     <tbody id="requests-table-body">
@@ -64,6 +323,9 @@
         </main>
     </div>
 
+    <!-- Notification container -->
+    <div id="notification-container"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             fetchInitialData();
@@ -71,6 +333,7 @@
         });
 
         const API_BASE_URL = '/api';
+        let currentRequests = new Map();
 
         async function fetchInitialData() {
             try {
@@ -79,14 +342,24 @@
                 const data = await response.json();
                 const tableBody = document.getElementById('requests-table-body');
                 tableBody.innerHTML = '';
+                
                 data.requests.forEach(request => {
                     const row = createRequestRow(request);
                     tableBody.appendChild(row);
+                    currentRequests.set(request.request_id, request);
                 });
+                
+                updateStats();
+                showNotification('📊 Dashboard loaded successfully', 'success');
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 const tableBody = document.getElementById('requests-table-body');
-                tableBody.innerHTML = `<tr><td colspan="8" class="text-center p-8 text-red-500 font-semibold">Failed to load initial requests. Check API connection.</td></tr>`;
+                tableBody.innerHTML = `
+                    <tr><td colspan="8" class="text-center p-12">
+                        <div class="text-red-500 font-bold text-xl mb-2">⚠️ Failed to load requests</div>
+                        <div class="text-slate-500">Check API connection and try refreshing</div>
+                    </td></tr>
+                `;
             }
         }
 
@@ -96,12 +369,14 @@
 
             eventSource.onopen = () => {
                 console.log("SSE Connection Opened");
-                statusDiv.innerHTML = `<div class="w-4 h-4 rounded-full bg-green-500"></div><span>Connected</span>`;
+                statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-connected"></div><span>🟢 Live</span>`;
+                statusDiv.className = "flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full text-white";
             };
 
             eventSource.onerror = () => {
                 console.error("SSE Connection Error. Reconnecting...");
-                statusDiv.innerHTML = `<div class="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div><span>Disconnected. Retrying...</span>`;
+                statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-disconnected"></div><span>🔴 Reconnecting...</span>`;
+                statusDiv.className = "flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full text-white";
                 eventSource.close();
                 setTimeout(connectToSSE, 5000);
             };
@@ -112,8 +387,11 @@
 
                 if (data.type === 'new_request') {
                     handleNewRequest(data);
+                    showNotification('🆕 New blood request received!', 'success');
+                    playNotificationSound();
                 } else if (data.type === 'status_update') {
                     handleStatusUpdate(data);
+                    showNotification('🔄 Request status updated', 'info');
                 }
             };
         }
@@ -126,8 +404,14 @@
             const row = createRequestRow(requestData);
             row.classList.add('new-row');
             tableBody.prepend(row);
+            
+            currentRequests.set(requestData.request_id, requestData);
+            updateStats();
 
-            setTimeout(() => row.classList.remove('new-row'), 5000);
+            // Remove highlight after animation
+            setTimeout(() => {
+                row.classList.remove('new-row');
+            }, 8000);
         }
 
         function handleStatusUpdate(updateData) {
@@ -138,17 +422,29 @@
             const lastUpdateCell = row.querySelector('.last-update-cell');
             
             statusCell.innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
-            lastUpdateCell.textContent = formatDateTime(updateData.updated_at);
+            lastUpdateCell.innerHTML = `<span class="time-fresh">${formatDateTime(updateData.updated_at)}</span>`;
             
             row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
-            row.classList.add('new-row');
-            setTimeout(() => row.classList.remove('new-row'), 3000);
+            row.classList.add('updated-row');
+            
+            // Update local cache
+            if (currentRequests.has(updateData.request_id)) {
+                const request = currentRequests.get(updateData.request_id);
+                request.status = updateData.status;
+                request.updated_at = updateData.updated_at;
+            }
+            
+            updateStats();
+            
+            setTimeout(() => {
+                row.classList.remove('updated-row');
+            }, 5000);
         }
 
         function createRequestRow(request) {
             const row = document.createElement('tr');
             row.id = `request-${request.request_id}`;
-            row.className = 'bg-white border-b hover:bg-slate-50';
+            row.className = 'table-row';
 
             const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
             
@@ -160,31 +456,35 @@
             const deliveryTime = request.delivery_time || requestData.deliveryTime || '';
             const bloodDetails = request.blood_details || `${requestData.subtype || 'N/A'} (${requestData.quantity || '0'} Units)`;
 
-            if (!request.blood_type || request.blood_type.trim() === '') {
-                row.classList.add('highlight-blank');
+            // Add priority class for urgent requests
+            const isUrgent = bloodType.toLowerCase().includes('o-') || deliveryTime.toLowerCase().includes('stat');
+            if (isUrgent) {
+                row.classList.add('priority-urgent');
             }
 
             row.innerHTML = `
-                <td class="px-6 py-4 font-bold text-slate-900">
-                    <div>${patientName}</div>
-                    <div class="font-normal text-slate-500">${hn}</div>
+                <td class="px-6 py-5">
+                    <div class="font-bold text-slate-900 text-lg">${patientName}</div>
+                    <div class="font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded text-sm inline-block mt-1">HN: ${hn}</div>
                 </td>
-                <td class="px-6 py-4">
-                    <div class="component-pill component-${bloodType.toLowerCase()}">${bloodType}</div>
+                <td class="px-6 py-5">
+                    <div class="component-pill component-${bloodType.toLowerCase()}">${bloodType.toUpperCase()}</div>
                 </td>
-                <td class="px-6 py-4">
-                    <div>${bloodDetails}</div>
+                <td class="px-6 py-5">
+                    <div class="font-semibold text-slate-800">${bloodDetails}</div>
                 </td>
-                <td class="px-6 py-4">${wardName}</td>
-                <td class="px-6 py-4">
-                    <div>${deliveryLocation}</div>
-                    <div class="font-semibold text-sky-700">${deliveryTime}</div>
+                <td class="px-6 py-5">
+                    <div class="font-semibold text-slate-700">${wardName}</div>
                 </td>
-                <td class="px-6 py-4 status-cell">
+                <td class="px-6 py-5">
+                    <div class="text-slate-700">${deliveryLocation}</div>
+                    <div class="font-bold text-blue-600 mt-1">${deliveryTime}</div>
+                </td>
+                <td class="px-6 py-5 status-cell">
                     ${createStatusDropdown(request.request_id, request.status)}
                 </td>
-                <td class="px-6 py-4 requested-at-cell">${formatDateTime(request.created_at)}</td>
-                <td class="px-6 py-4 last-update-cell">${formatDateTime(request.updated_at)}</td>
+                <td class="px-6 py-5 requested-at-cell">${formatDateTimeWithClass(request.created_at)}</td>
+                <td class="px-6 py-5 last-update-cell">${formatDateTimeWithClass(request.updated_at)}</td>
             `;
 
             row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
@@ -196,10 +496,11 @@
             let options = '';
             statuses.forEach(s => {
                 const selected = s === currentStatus ? 'selected' : '';
-                options += `<option value="${s}" ${selected}>${s.replace('_', ' ')}</option>`;
+                const displayText = s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                options += `<option value="${s}" ${selected}>${displayText}</option>`;
             });
             return `
-                <select data-id="${requestId}" class="status-dropdown status-pill status-${currentStatus} border-none outline-none appearance-none cursor-pointer p-2 pr-8 rounded-full">
+                <select data-id="${requestId}" class="status-dropdown status-pill status-${currentStatus} border-none outline-none cursor-pointer">
                     ${options}
                 </select>
             `;
@@ -210,7 +511,7 @@
             const requestId = selectElement.dataset.id;
             const newStatus = selectElement.value;
 
-            selectElement.className = `status-dropdown status-pill status-${newStatus} border-none outline-none appearance-none cursor-pointer p-2 pr-8 rounded-full`;
+            selectElement.className = `status-dropdown status-pill status-${newStatus} border-none outline-none cursor-pointer`;
 
             try {
                 const response = await fetch(`${API_BASE_URL}/update_status`, {
@@ -224,6 +525,7 @@
                 console.log(`Successfully sent status update for ${requestId} to ${newStatus}`);
             } catch (error) {
                 console.error("Error updating status:", error);
+                showNotification('❌ Failed to update status', 'error');
             }
         }
 
@@ -239,6 +541,126 @@
                 return isoString;
             }
         }
+
+        function formatDateTimeWithClass(isoString) {
+            if (!isoString) return '<span class="time-old">N/A</span>';
+            try {
+                const date = new Date(isoString);
+                const now = new Date();
+                const diffMinutes = (now - date) / (1000 * 60);
+                
+                const formatted = date.toLocaleString('en-GB', {
+                    day: '2-digit', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', hour12: false
+                }).replace(',', '');
+                
+                let className = 'time-old';
+                if (diffMinutes < 5) className = 'time-fresh';
+                else if (diffMinutes < 30) className = 'time-recent';
+                
+                return `<span class="${className}">${formatted}</span>`;
+            } catch (e) {
+                return `<span class="time-old">${isoString}</span>`;
+            }
+        }
+
+        function updateStats() {
+            const requests = Array.from(currentRequests.values());
+            const today = new Date().toDateString();
+            
+            const todayRequests = requests.filter(r => {
+                const requestDate = new Date(r.created_at).toDateString();
+                return requestDate === today;
+            });
+            
+            const pendingCount = requests.filter(r => r.status === 'pending').length;
+            const activeCount = requests.filter(r => ['submitted', 'in_progress'].includes(r.status)).length;
+            const deliveredCount = requests.filter(r => r.status === 'delivered').length;
+            
+            document.getElementById('pending-count').textContent = pendingCount;
+            document.getElementById('active-count').textContent = activeCount;
+            document.getElementById('delivered-count').textContent = deliveredCount;
+            document.getElementById('total-count').textContent = todayRequests.length;
+        }
+
+        function showNotification(message, type = 'success') {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            
+            const bgColor = type === 'success' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                           type === 'error' ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' :
+                           'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+            
+            notification.className = 'notification';
+            notification.style.background = bgColor;
+            notification.textContent = message;
+            
+            container.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            // Auto remove
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => container.removeChild(notification), 300);
+            }, 4000);
+        }
+
+        function playNotificationSound() {
+            // Create a subtle notification sound
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.01);
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // Auto-refresh time displays every minute
+        setInterval(() => {
+            document.querySelectorAll('.requested-at-cell, .last-update-cell').forEach(cell => {
+                const span = cell.querySelector('span');
+                if (span && span.textContent !== 'N/A') {
+                    // Re-calculate time class based on current time
+                    const timeText = span.textContent;
+                    const isoString = cell.getAttribute('data-iso') || timeText;
+                    if (isoString) {
+                        cell.innerHTML = formatDateTimeWithClass(isoString);
+                    }
+                }
+            });
+        }, 60000);
+
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        fetchInitialData();
+                        showNotification('🔄 Dashboard refreshed', 'info');
+                        break;
+                }
+            }
+        });
+
+        // Add visibility change handling to refresh when tab becomes active
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                fetchInitialData();
+            }
+        });
     </script>
 </body>
 </html>
