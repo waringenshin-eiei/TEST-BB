@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Blood Request Dashboard</title>
+    <title>Blood Request Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         /* Pre-compiled Tailwind CSS */
@@ -16,28 +16,13 @@
             min-height: 100vh;
         }
         
-        /* Header animations */
+        /* Header styles */
         .header-glow {
             background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        .header-glow::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            animation: shimmer 3s infinite;
-        }
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         
-        /* Enhanced connection status */
+        /* Connection status */
         .status-connected { 
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
@@ -51,73 +36,63 @@
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
         }
         
-        /* Enhanced component pills */
+        /* Component pills - larger and more prominent */
         .component-pill { 
-            padding: 8px 16px; 
-            border-radius: 12px; 
+            padding: 12px 20px; 
+            border-radius: 16px; 
             font-weight: 700; 
             color: white; 
             text-align: center; 
             text-transform: uppercase;
-            letter-spacing: 1px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            letter-spacing: 1.5px;
+            font-size: 1rem;
+            min-width: 120px;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             transition: all 0.3s ease;
-        }
-        .component-pill::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-            transition: left 0.5s ease;
-        }
-        .component-pill:hover::before {
-            left: 100%;
+            border: 3px solid transparent;
         }
         
         .component-redcell { 
             background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
-            border: 2px solid #fca5a5;
+            border-color: #fca5a5;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
         }
         .component-ffp { 
             background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
-            border: 2px solid #fcd34d;
+            border-color: #fcd34d;
+            box-shadow: 0 4px 15px rgba(217, 119, 6, 0.4);
         }
         .component-cryoprecipitate { 
             background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-            border: 2px solid #7dd3fc;
+            border-color: #7dd3fc;
+            box-shadow: 0 4px 15px rgba(2, 132, 199, 0.4);
         }
         .component-unknown { 
             background: linear-gradient(135deg, #64748b 0%, #475569 100%);
-            border: 2px solid #cbd5e1;
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 15px rgba(100, 116, 139, 0.4);
         }
         
-        /* Enhanced status pills */
+        /* Status pills - removed submitted */
         .status-pill { 
-            padding: 6px 14px; 
+            padding: 8px 16px; 
             border-radius: 20px; 
             font-weight: 600; 
-            font-size: 0.75rem; 
+            font-size: 0.8rem; 
             text-transform: uppercase; 
             letter-spacing: 0.8px;
             border: 2px solid transparent;
             transition: all 0.3s ease;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            min-width: 120px;
+            text-align: center;
         }
         
         .status-pending { 
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
             color: #92400e; 
             border-color: #f59e0b;
-        }
-        .status-submitted { 
-            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); 
-            color: #1e40af; 
-            border-color: #3b82f6;
         }
         .status-in_progress { 
             background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); 
@@ -135,7 +110,7 @@
             border-color: #ef4444;
         }
         
-        /* Enhanced table styles */
+        /* Table styles */
         .dashboard-table {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -159,65 +134,86 @@
         .table-row:hover {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         
-        /* New request animations */
-        @keyframes slideInFromTop {
+        /* New request animation */
+        @keyframes slideInNew {
             0% { 
                 opacity: 0; 
-                transform: translateY(-20px) scale(0.95);
-                box-shadow: 0 0 0 rgba(34, 197, 94, 0);
+                transform: translateY(-30px) scale(0.9);
+                background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
             }
             50% {
                 opacity: 1;
                 transform: translateY(0) scale(1.02);
-                box-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+                background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
             }
             100% { 
                 opacity: 1; 
                 transform: translateY(0) scale(1);
-                box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+                background: white;
             }
         }
         
-        @keyframes pulse-border {
-            0%, 100% { border-color: #22c55e; }
-            50% { border-color: #16a34a; }
-        }
-        
         .new-row { 
-            animation: slideInFromTop 0.8s ease-out;
-            background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%) !important;
-            border: 2px solid #22c55e !important;
-            animation: slideInFromTop 0.8s ease-out, pulse-border 2s ease-in-out 3;
+            animation: slideInNew 1.5s ease-out;
+            border-left: 5px solid #22c55e !important;
         }
         
-        .updated-row {
-            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
-            border: 2px solid #0ea5e9 !important;
-            animation: slideInFromTop 0.6s ease-out;
+        /* Patient info styling */
+        .patient-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .patient-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .patient-hn {
+            font-family: 'Courier New', monospace;
+            background: #f1f5f9;
+            color: #475569;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: inline-block;
+            border: 1px solid #cbd5e1;
         }
         
-        /* Priority indicators */
-        .priority-urgent {
-            position: relative;
-        }
-        .priority-urgent::before {
-            content: '🚨';
-            position: absolute;
-            left: -25px;
-            top: 50%;
-            transform: translateY(-50%);
-            animation: urgent-blink 1s infinite;
+        /* Details styling */
+        .blood-details {
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            font-weight: 600;
         }
         
-        @keyframes urgent-blink {
-            0%, 50% { opacity: 1; }
-            51%, 100% { opacity: 0.3; }
+        /* Delivery info */
+        .delivery-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .delivery-location {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .delivery-time {
+            color: #0369a1;
+            font-weight: 700;
+            font-size: 0.9rem;
         }
         
-        /* Enhanced notification styles */
+        /* Time indicators */
+        .time-fresh { color: #059669; font-weight: 600; }
+        .time-recent { color: #0ea5e9; font-weight: 500; }
+        .time-old { color: #64748b; }
+        
+        /* Notification styles */
         .notification {
             position: fixed;
             top: 20px;
@@ -236,38 +232,23 @@
             transform: translateX(0);
         }
         
-        /* Time indicators */
-        .time-fresh { color: #059669; font-weight: 600; }
-        .time-recent { color: #0ea5e9; }
-        .time-old { color: #64748b; }
-        
-        /* Loading states */
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: skeleton-loading 1.5s infinite;
-        }
-        
-        @keyframes skeleton-loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-        
-        /* Responsive enhancements */
+        /* Responsive */
         @media (max-width: 768px) {
             .component-pill {
-                padding: 6px 12px;
-                font-size: 0.75rem;
+                padding: 8px 12px;
+                font-size: 0.8rem;
+                min-width: 100px;
             }
-            .table-row {
-                font-size: 0.875rem;
+            .patient-name {
+                font-size: 1rem;
             }
         }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
-        <header class="header-glow text-white rounded-xl p-6 mb-8 relative">
+        <!-- Header -->
+        <header class="header-glow text-white rounded-xl p-6 mb-8">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-4xl font-bold mb-2">🩸 Blood Request Dashboard</h1>
@@ -279,7 +260,7 @@
                 </div>
             </div>
             
-            <!-- Stats Bar -->
+            <!-- Stats -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
                 <div class="bg-white bg-opacity-10 rounded-lg p-4 text-center backdrop-blur-sm">
                     <div class="text-2xl font-bold" id="pending-count">0</div>
@@ -300,23 +281,24 @@
             </div>
         </header>
 
+        <!-- Main Table -->
         <main class="dashboard-table">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="table-header">
                         <tr>
-                            <th scope="col" class="px-6 py-4">🏥 Patient & HN</th>
-                            <th scope="col" class="px-6 py-4">🩸 Component</th>
-                            <th scope="col" class="px-6 py-4">📋 Details</th>
-                            <th scope="col" class="px-6 py-4">🏨 Ward</th>
-                            <th scope="col" class="px-6 py-4">🚚 Delivery</th>
-                            <th scope="col" class="px-6 py-4">📊 Status</th>
-                            <th scope="col" class="px-6 py-4">⏰ Requested</th>
-                            <th scope="col" class="px-6 py-4">🔄 Updated</th>
+                            <th scope="col" class="px-6 py-4 w-1/6">Patient & HN</th>
+                            <th scope="col" class="px-6 py-4 w-1/8 text-center">Component</th>
+                            <th scope="col" class="px-6 py-4 w-1/6">Details</th>
+                            <th scope="col" class="px-6 py-4 w-1/8">Ward</th>
+                            <th scope="col" class="px-6 py-4 w-1/6">Delivery</th>
+                            <th scope="col" class="px-6 py-4 w-1/8 text-center">Status</th>
+                            <th scope="col" class="px-6 py-4 w-1/8">Requested</th>
+                            <th scope="col" class="px-6 py-4 w-1/8">Updated</th>
                         </tr>
                     </thead>
                     <tbody id="requests-table-body">
-                        <!-- Rows will be inserted here by JavaScript -->
+                        <!-- Rows will be inserted here -->
                     </tbody>
                 </table>
             </div>
@@ -327,22 +309,25 @@
     <div id="notification-container"></div>
 
     <script>
+        const API_BASE_URL = '/api';
+        let currentRequests = new Map();
+        let isManualStatusUpdate = false;
+
         document.addEventListener('DOMContentLoaded', () => {
             fetchInitialData();
             connectToSSE();
         });
-
-        const API_BASE_URL = '/api';
-        let currentRequests = new Map();
 
         async function fetchInitialData() {
             try {
                 const response = await fetch(`${API_BASE_URL}/get_requests`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
+                
                 const tableBody = document.getElementById('requests-table-body');
                 tableBody.innerHTML = '';
                 
+                currentRequests.clear();
                 data.requests.forEach(request => {
                     const row = createRequestRow(request);
                     tableBody.appendChild(row);
@@ -370,13 +355,11 @@
             eventSource.onopen = () => {
                 console.log("SSE Connection Opened");
                 statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-connected"></div><span>🟢 Live</span>`;
-                statusDiv.className = "flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full text-white";
             };
 
             eventSource.onerror = () => {
                 console.error("SSE Connection Error. Reconnecting...");
                 statusDiv.innerHTML = `<div class="w-5 h-5 rounded-full status-disconnected"></div><span>🔴 Reconnecting...</span>`;
-                statusDiv.className = "flex items-center gap-3 text-lg font-bold px-6 py-3 rounded-full text-white";
                 eventSource.close();
                 setTimeout(connectToSSE, 5000);
             };
@@ -389,7 +372,8 @@
                     handleNewRequest(data);
                     showNotification('🆕 New blood request received!', 'success');
                     playNotificationSound();
-                } else if (data.type === 'status_update') {
+                } else if (data.type === 'status_update' && !isManualStatusUpdate) {
+                    // Only handle SSE status updates if they weren't triggered by this client
                     handleStatusUpdate(data);
                     showNotification('🔄 Request status updated', 'info');
                 }
@@ -411,7 +395,7 @@
             // Remove highlight after animation
             setTimeout(() => {
                 row.classList.remove('new-row');
-            }, 8000);
+            }, 3000);
         }
 
         function handleStatusUpdate(updateData) {
@@ -422,23 +406,20 @@
             const lastUpdateCell = row.querySelector('.last-update-cell');
             
             statusCell.innerHTML = createStatusDropdown(updateData.request_id, updateData.status);
-            lastUpdateCell.innerHTML = `<span class="time-fresh">${formatDateTime(updateData.updated_at)}</span>`;
+            lastUpdateCell.innerHTML = formatDateTimeWithClass(updateData.updated_at);
             
+            // Re-attach event listener
             row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
-            row.classList.add('updated-row');
             
             // Update local cache
             if (currentRequests.has(updateData.request_id)) {
                 const request = currentRequests.get(updateData.request_id);
                 request.status = updateData.status;
                 request.updated_at = updateData.updated_at;
+                currentRequests.set(updateData.request_id, request);
             }
             
             updateStats();
-            
-            setTimeout(() => {
-                row.classList.remove('updated-row');
-            }, 5000);
         }
 
         function createRequestRow(request) {
@@ -450,41 +431,39 @@
             
             const bloodType = request.blood_type || requestData.bloodType || 'unknown';
             const patientName = request.patient_name || requestData.patientName || 'N/A';
-            const hn = request.hospital_number || requestData.hn || 'No HN';
+            const hn = request.hospital_number || requestData.hn || 'N/A';
             const wardName = request.ward_name || requestData.wardName || 'N/A';
             const deliveryLocation = request.delivery_location || requestData.deliveryLocation || 'N/A';
             const deliveryTime = request.delivery_time || requestData.deliveryTime || '';
             const bloodDetails = request.blood_details || `${requestData.subtype || 'N/A'} (${requestData.quantity || '0'} Units)`;
 
-            // Add priority class for urgent requests
-            const isUrgent = bloodType.toLowerCase().includes('o-') || deliveryTime.toLowerCase().includes('stat');
-            if (isUrgent) {
-                row.classList.add('priority-urgent');
-            }
-
             row.innerHTML = `
-                <td class="px-6 py-5">
-                    <div class="font-bold text-slate-900 text-lg">${patientName}</div>
-                    <div class="font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded text-sm inline-block mt-1">HN: ${hn}</div>
+                <td class="px-6 py-6">
+                    <div class="patient-info">
+                        <div class="patient-name">${patientName}</div>
+                        <div class="patient-hn">HN: ${hn}</div>
+                    </div>
                 </td>
-                <td class="px-6 py-5">
+                <td class="px-6 py-6 text-center">
                     <div class="component-pill component-${bloodType.toLowerCase()}">${bloodType.toUpperCase()}</div>
                 </td>
-                <td class="px-6 py-5">
-                    <div class="font-semibold text-slate-800">${bloodDetails}</div>
+                <td class="px-6 py-6">
+                    <div class="blood-details">${bloodDetails}</div>
                 </td>
-                <td class="px-6 py-5">
+                <td class="px-6 py-6">
                     <div class="font-semibold text-slate-700">${wardName}</div>
                 </td>
-                <td class="px-6 py-5">
-                    <div class="text-slate-700">${deliveryLocation}</div>
-                    <div class="font-bold text-blue-600 mt-1">${deliveryTime}</div>
+                <td class="px-6 py-6">
+                    <div class="delivery-info">
+                        <div class="delivery-location">${deliveryLocation}</div>
+                        <div class="delivery-time">${deliveryTime}</div>
+                    </div>
                 </td>
-                <td class="px-6 py-5 status-cell">
+                <td class="px-6 py-6 status-cell text-center">
                     ${createStatusDropdown(request.request_id, request.status)}
                 </td>
-                <td class="px-6 py-5 requested-at-cell">${formatDateTimeWithClass(request.created_at)}</td>
-                <td class="px-6 py-5 last-update-cell">${formatDateTimeWithClass(request.updated_at)}</td>
+                <td class="px-6 py-6 requested-at-cell">${formatDateTimeWithClass(request.created_at)}</td>
+                <td class="px-6 py-6 last-update-cell">${formatDateTimeWithClass(request.updated_at)}</td>
             `;
 
             row.querySelector('.status-dropdown').addEventListener('change', handleStatusChange);
@@ -492,7 +471,8 @@
         }
 
         function createStatusDropdown(requestId, currentStatus) {
-            const statuses = ['pending', 'submitted', 'in_progress', 'delivered', 'cancelled'];
+            // Removed 'submitted' status
+            const statuses = ['pending', 'in_progress', 'delivered', 'cancelled'];
             let options = '';
             statuses.forEach(s => {
                 const selected = s === currentStatus ? 'selected' : '';
@@ -510,8 +490,14 @@
             const selectElement = event.target;
             const requestId = selectElement.dataset.id;
             const newStatus = selectElement.value;
+            const oldStatus = selectElement.getAttribute('data-old-status') || '';
 
+            // Set flag to indicate this is a manual update
+            isManualStatusUpdate = true;
+
+            // Update visual immediately
             selectElement.className = `status-dropdown status-pill status-${newStatus} border-none outline-none cursor-pointer`;
+            selectElement.setAttribute('data-old-status', newStatus);
 
             try {
                 const response = await fetch(`${API_BASE_URL}/update_status`, {
@@ -519,14 +505,38 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ request_id: requestId, status: newStatus })
                 });
+
                 if (!response.ok) {
-                    throw new Error('Failed to update status on the server.');
+                    const errorData = await response.json();
+                    throw new Error(`Server error: ${errorData.message || 'Unknown error'}`);
                 }
-                console.log(`Successfully sent status update for ${requestId} to ${newStatus}`);
+
+                const result = await response.json();
+                console.log(`✅ Status updated successfully for ${requestId} to ${newStatus}`);
+                
+                // Update local cache
+                if (currentRequests.has(requestId)) {
+                    const request = currentRequests.get(requestId);
+                    request.status = newStatus;
+                    request.updated_at = new Date().toISOString();
+                    currentRequests.set(requestId, request);
+                }
+                
+                updateStats();
+                showNotification(`✅ Status updated to ${newStatus.replace('_', ' ')}`, 'success');
+
             } catch (error) {
                 console.error("Error updating status:", error);
-                showNotification('❌ Failed to update status', 'error');
+                // Revert the visual change on error
+                selectElement.className = `status-dropdown status-pill status-${oldStatus} border-none outline-none cursor-pointer`;
+                selectElement.value = oldStatus;
+                showNotification(`❌ Failed to update status: ${error.message}`, 'error');
             }
+
+            // Reset flag after a short delay
+            setTimeout(() => {
+                isManualStatusUpdate = false;
+            }, 1000);
         }
 
         function formatDateTime(isoString) {
@@ -549,10 +559,7 @@
                 const now = new Date();
                 const diffMinutes = (now - date) / (1000 * 60);
                 
-                const formatted = date.toLocaleString('en-GB', {
-                    day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit', hour12: false
-                }).replace(',', '');
+                const formatted = formatDateTime(isoString);
                 
                 let className = 'time-old';
                 if (diffMinutes < 5) className = 'time-fresh';
@@ -574,7 +581,7 @@
             });
             
             const pendingCount = requests.filter(r => r.status === 'pending').length;
-            const activeCount = requests.filter(r => ['submitted', 'in_progress'].includes(r.status)).length;
+            const activeCount = requests.filter(r => r.status === 'in_progress').length;
             const deliveredCount = requests.filter(r => r.status === 'delivered').length;
             
             document.getElementById('pending-count').textContent = pendingCount;
@@ -603,62 +610,73 @@
             // Auto remove
             setTimeout(() => {
                 notification.classList.remove('show');
-                setTimeout(() => container.removeChild(notification), 300);
+                setTimeout(() => {
+                    if (container.contains(notification)) {
+                        container.removeChild(notification);
+                    }
+                }, 300);
             }, 4000);
         }
 
         function playNotificationSound() {
-            // Create a subtle notification sound
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
-            
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.01);
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.2);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.2);
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime + 0.01);
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.2);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch (error) {
+                console.log('Audio notification not available');
+            }
         }
 
-        // Auto-refresh time displays every minute
-        setInterval(() => {
-            document.querySelectorAll('.requested-at-cell, .last-update-cell').forEach(cell => {
-                const span = cell.querySelector('span');
-                if (span && span.textContent !== 'N/A') {
-                    // Re-calculate time class based on current time
-                    const timeText = span.textContent;
-                    const isoString = cell.getAttribute('data-iso') || timeText;
-                    if (isoString) {
-                        cell.innerHTML = formatDateTimeWithClass(isoString);
-                    }
-                }
-            });
-        }, 60000);
-
-        // Add keyboard shortcuts
+        // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
                 switch(e.key) {
                     case 'r':
                         e.preventDefault();
                         fetchInitialData();
-                        showNotification('🔄 Dashboard refreshed', 'info');
+                        showNotification('🔄 Dashboard refreshed manually', 'info');
                         break;
                 }
             }
         });
 
-        // Add visibility change handling to refresh when tab becomes active
+        // Update time displays every minute
+        setInterval(() => {
+            document.querySelectorAll('.requested-at-cell span, .last-update-cell span').forEach(span => {
+                if (span.textContent !== 'N/A') {
+                    const parentCell = span.closest('td');
+                    const isoString = parentCell.getAttribute('data-iso');
+                    if (isoString) {
+                        span.outerHTML = formatDateTimeWithClass(isoString);
+                    }
+                }
+            });
+        }, 60000);
+
+        // Auto-refresh when tab becomes visible (but don't override SSE updates)
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                fetchInitialData();
+                // Only refresh if we've been away for more than 5 minutes
+                const lastRefresh = localStorage.getItem('lastRefresh');
+                const now = Date.now();
+                if (!lastRefresh || (now - parseInt(lastRefresh)) > 300000) {
+                    fetchInitialData();
+                    localStorage.setItem('lastRefresh', now.toString());
+                }
             }
         });
     </script>
