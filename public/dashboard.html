@@ -150,7 +150,6 @@
             row.id = `request-${request.request_id}`;
             row.className = 'bg-white border-b hover:bg-slate-50';
 
-            // FIX: This logic now handles both old and new data structures gracefully.
             const requestData = typeof request.request_data === 'string' ? JSON.parse(request.request_data) : request.request_data || {};
             
             const bloodType = request.blood_type || requestData.bloodType || 'unknown';
