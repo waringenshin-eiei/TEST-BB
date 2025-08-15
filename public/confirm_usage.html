@@ -103,16 +103,14 @@
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <div class="product-card lg:col-span-2 p-6" data-type="redcell" style="--tw-accent-color: #ef4444; --tw-shadow-color: rgba(239, 68, 68, 0.2);">
-                        <h3 class="text-2xl font-bold text-medical-red-600">เม็ดเลือดแดงชนิดต่างๆ (Red Blood Cells)</h3>
-                        <p class="text-gray-600 mt-2">สำหรับผู้ป่วยที่ต้องการเพิ่มความสามารถในการขนส่งออกซิเจน เช่น PRC, LPRC, และ LDRC</p>
+                        <h3 class="text-2xl font-bold text-medical-red-600">Red Blood Cells</h3>
+                        <p class="text-gray-600 mt-2">PRC, LPRC, และ LDRC</p>
                     </div>
                     <div class="product-card p-6" data-type="ffp" style="--tw-accent-color: #f59e0b; --tw-shadow-color: rgba(245, 158, 11, 0.2);">
-                        <h3 class="text-xl font-bold text-medical-gold-600">พลาสมา (Fresh Frozen Plasma)</h3>
-                        <p class="text-sm text-gray-500 mt-1">สำหรับทดแทนปัจจัยการแข็งตัวของเลือด</p>
+                        <h3 class="text-xl font-bold text-medical-gold-600">Fresh Frozen Plasma</h3>
                     </div>
                     <div class="product-card p-6" data-type="cryoprecipitate" style="--tw-accent-color: #0ea5e9; --tw-shadow-color: rgba(14, 165, 233, 0.2);">
-                        <h3 class="text-xl font-bold text-medical-blue-600">ไครโอพรีซิพเิเทต (Cryoprecipitate)</h3>
-                        <p class="text-sm text-gray-500 mt-1">ส่วนประกอบที่เข้มข้นของ FFP</p>
+                        <h3 class="text-xl font-bold text-medical-blue-600">Cryoprecipitate</h3>
                     </div>
                 </div>
                 <div class="flex justify-end mt-8">
@@ -398,7 +396,7 @@
         }
 
         function showSuccessModal(title, message) {
-            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
+            document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p><p class="text-sm text-gray-500 mt-3">ท่านสามารถปิดหน้าต่างได้</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
             // Change button text for success modal
             document.getElementById('modalCloseBtn').textContent = 'ตกลง (OK)';
