@@ -21,7 +21,8 @@
         }
     </script>
     <style>
-        body { font-family: 'Sarabun', system-ui, sans-serif; background: #f8fafc; min-height: 100vh; }
+        /* --- ENHANCEMENT: Added subtle background gradient --- */
+        body { font-family: 'Sarabun', system-ui, sans-serif; background: #f8fafc; min-height: 100vh; background-image: linear-gradient(to top, #f3f4f6, #ffffff); }
         .main-container { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(30px); border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1); }
         .form-page { display: none; animation: fadeIn 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
         .form-page.active { display: block; }
@@ -48,7 +49,7 @@
         .btn-primary:disabled { background: linear-gradient(135deg, #9ca3af, #6b7280); cursor: not-allowed; transform: none; box-shadow: none; }
         .btn-secondary { background: #fff; color: #4b5563; border: 2px solid #d1d5db; transition: all 0.3s ease; }
         .btn-secondary:hover { background: #f9fafb; border-color: #9ca3af; transform: translateY(-2px); }
-        .product-card, .selection-card { border-radius: 1.5rem; border: 2px solid #e2e8f0; background: #fff; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; }
+        .product-card, .selection-card { border-radius: 1.5rem; border: 2px solid #e2e8f0; background: #fff; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
         .selection-card { border-radius: 1rem; }
         .product-card:hover, .selection-card:hover { transform: translateY(-5px); border-color: var(--tw-accent-color); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.05); }
         .product-card.selected, .selection-card.selected { border-color: var(--tw-accent-color); transform: translateY(-2px); box-shadow: 0 0 0 4px var(--tw-shadow-color); }
@@ -61,11 +62,23 @@
         .autocomplete-items div:hover { background-color: #f3f4f6; }
         .autocomplete-active { background-color: #f3f4f6 !important; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
-        .summary-docket { background-color: #f8fafc; border: 2px dashed #d1d5db; border-radius: 1.25rem; padding: 1.5rem; margin-top: 2rem; }
-        .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1.5rem; }
+        /* --- ENHANCEMENT: Refined loading spinner for elegance --- */
+        .loading-spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; width: 20px; height: 20px; animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite; }
+        /* --- ENHANCEMENT: Styles for refined summary docket --- */
+        .summary-docket { background-color: #ffffff; border: 2px solid #e2e8f0; border-radius: 1.25rem; padding: 1.5rem; margin-top: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.03), 0 4px 6px -4px rgba(0,0,0,0.03); }
+        .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem 1.5rem; }
+        .summary-grid > div { padding: 0.75rem 0; border-bottom: 1px solid #f3f4f6; display: contents;}
+        .summary-grid > div:last-child { border-bottom: none; }
         .summary-label { font-weight: 600; color: #4b5563; text-align: right; }
         .summary-value { font-weight: 500; color: #111827; }
+        /* --- ENHANCEMENT: Styles for checkmark icon on selection --- */
+        .checkmark { opacity: 0; transform: scale(0.5); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .selected .checkmark { opacity: 1; transform: scale(1); }
+        /* --- ENHANCEMENT: Styles for quantity stepper --- */
+        .stepper-btn { width: 44px; height: 44px; border-radius: 50%; border: 2px solid #d1d5db; color: #4b5563; font-size: 24px; font-weight: 400; display: flex; align-items: center; justify-content: center; background: #fff; transition: all 0.2s ease; line-height: 1; }
+        .stepper-btn:hover { background: #f9fafb; border-color: #9ca3af; transform: scale(1.05); }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; text-align: center; font-weight: 600; font-size: 1.25rem; }
     </style>
 </head>
 <body class="py-6 px-3 md:py-8 md:px-4">
@@ -84,22 +97,29 @@
                     <div id="progressBar" class="progress-fill h-2.5 rounded-full" style="width: 25%;"></div>
                 </div>
             </div>
+
             <div class="form-page active" id="page1">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">เลือกผลิตภัณฑ์เลือด</h2>
-                    <p class="text-gray-600 mt-1">Select Blood Product</p>
+                <div class="section-header border-l-4 p-6 rounded-2xl bg-white/50 mb-6 flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-gray-500"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m.75 12l3 3m0 0l3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">เลือกผลิตภัณฑ์เลือด</h2>
+                        <p class="text-gray-600 mt-1">Select Blood Product</p>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <div class="product-card lg:col-span-2 p-6" data-type="redcell" style="--tw-accent-color: #ef4444; --tw-shadow-color: rgba(239, 68, 68, 0.2);">
+                        <div class="absolute top-4 right-4 text-medical-red-500 checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" /></svg></div>
                         <h3 class="text-2xl font-bold text-medical-red-600">เม็ดเลือดแดงชนิดต่างๆ (Red Blood Cells)</h3>
                         <p class="text-gray-600 mt-2">สำหรับผู้ป่วยที่ต้องการเพิ่มความสามารถในการขนส่งออกซิเจน เช่น PRC, LPRC, และ LDRC</p>
                     </div>
                     <div class="product-card p-6" data-type="ffp" style="--tw-accent-color: #f59e0b; --tw-shadow-color: rgba(245, 158, 11, 0.2);">
+                        <div class="absolute top-4 right-4 text-medical-gold-500 checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" /></svg></div>
                         <h3 class="text-xl font-bold text-medical-gold-600">พลาสมา (Fresh Frozen Plasma)</h3>
                         <p class="text-sm text-gray-500 mt-1">สำหรับทดแทนปัจจัยการแข็งตัวของเลือด</p>
                     </div>
                     <div class="product-card p-6" data-type="cryoprecipitate" style="--tw-accent-color: #0ea5e9; --tw-shadow-color: rgba(14, 165, 233, 0.2);">
-                        <h3 class="text-xl font-bold text-medical-blue-600">ไครโอพรีซิพเิเทต (Cryoprecipitate)</h3>
+                        <div class="absolute top-4 right-4 text-medical-blue-500 checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8"><path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" /></svg></div>
+                        <h3 class="text-xl font-bold text-medical-blue-600">ไครโอพรีซิพิเทต (Cryoprecipitate)</h3>
                         <p class="text-sm text-gray-500 mt-1">ส่วนประกอบที่เข้มข้นของ FFP</p>
                     </div>
                 </div>
@@ -107,10 +127,14 @@
                     <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage1" disabled>ถัดไป →</button>
                 </div>
             </div>
+
             <div class="form-page" id="page2">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">ข้อมูลผู้ป่วยและผู้แจ้ง</h2>
-                    <p class="text-gray-600 mt-1">Patient & Reporter Information</p>
+                <div class="section-header border-l-4 p-6 rounded-2xl bg-white/50 mb-6 flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-gray-500"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" /></svg>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">ข้อมูลผู้ป่วยและผู้แจ้ง</h2>
+                        <p class="text-gray-600 mt-1">Patient & Reporter Information</p>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
                     <div class="floating-label mt-6">
@@ -135,10 +159,14 @@
                     <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage2" disabled>ถัดไป →</button>
                 </div>
             </div>
+
             <div class="form-page" id="page3">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">รายละเอียดผลิตภัณฑ์</h2>
-                    <p class="text-gray-600 mt-1">Product Details</p>
+                <div class="section-header border-l-4 p-6 rounded-2xl bg-white/50 mb-6 flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-gray-500"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">รายละเอียดผลิตภัณฑ์</h2>
+                        <p class="text-gray-600 mt-1">Product Details</p>
+                    </div>
                 </div>
                 <div id="typeSpecificContent"></div>
                 <div class="flex justify-between mt-8">
@@ -146,23 +174,31 @@
                     <button class="btn-primary text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg" id="nextPage3" disabled>ถัดไป →</button>
                 </div>
             </div>
+
             <div class="form-page" id="page4">
-                 <div class="section-header border-l-4 p-6 rounded-2xl bg-gray-50 mb-6">
-                    <h2 class="text-2xl font-bold text-gray-800">การจัดส่งและสรุปข้อมูล</h2>
-                    <p class="text-gray-600 mt-1">Delivery & Summary</p>
+                <div class="section-header border-l-4 p-6 rounded-2xl bg-white/50 mb-6 flex items-center space-x-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10 text-gray-500"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v.958m12 0c0 2.209-1.791 4-4 4s-4-1.791-4-4m8 0c0-2.209-1.791-4-4-4s-4 1.791-4 4m4 4v11.177" /></svg>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">การจัดส่งและสรุปข้อมูล</h2>
+                        <p class="text-gray-600 mt-1">Delivery & Summary</p>
+                    </div>
                 </div>
                 <div class="mb-6">
                     <label class="text-lg font-semibold text-gray-700">รอบเวลาจัดส่ง (Delivery Time)<span class="text-red-500">*</span></label>
-                    <div class="time-cards-grid grid gap-3 mt-3" id="deliveryTimeCards"></div>
+                    <div class="time-cards-grid grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-3" id="deliveryTimeCards"></div>
                 </div>
                 <div class="autocomplete-container floating-label mt-6">
                     <input type="text" id="deliveryLocation" name="deliveryLocation" required class="input-medical w-full h-14 px-4 rounded-xl" autocomplete="off" placeholder=" ">
                     <label class="label-float left-4 top-4 text-gray-500">สถานที่ส่ง (Delivery Location) <span class="text-red-500">*</span></label>
                 </div>
+                <p class="text-sm text-gray-500 mt-2 px-2">ค่าเริ่มต้นจากหอผู้ป่วย, สามารถค้นหาและแก้ไขได้</p>
                 <div class="summary-docket" id="summaryCard"></div>
                 <div class="flex justify-between mt-8">
                     <button class="btn-secondary font-bold py-3 px-8 rounded-full text-lg" onclick="previousPage()">← ย้อนกลับ</button>
-                    <button class="btn-primary text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg flex items-center justify-center" id="submitBtn" disabled>ยืนยันและส่งข้อมูล</button>
+                    <button class="btn-primary text-white font-bold py-4 px-8 rounded-full text-lg shadow-lg flex items-center justify-center space-x-3" id="submitBtn" disabled>
+                        <span>ยืนยันและส่งข้อมูล</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -226,46 +262,40 @@
             document.getElementById('stepDescription').textContent = stepDescriptions[currentPage];
             if (currentPage === 3) showTypeSpecificFields();
             if (currentPage === 4) {
-                 // Ensure summary is fresh when navigating to page 4
                 updateSummary();
-                validatePage(4); // Also validate state upon arrival
+                validatePage(4);
             }
         }
 
         function setupEventListeners() {
             document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', handleProductSelection));
             ['nextPage1', 'nextPage2', 'nextPage3'].forEach(id => document.getElementById(id).addEventListener('click', nextPage));
-            
-            // General validation for page 2 inputs
             ['hn', 'patientName', 'wardName', 'reporterName'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => validatePage(currentPage));
             });
             
-            // FIX 1: Refined pre-fill logic for Ward Name
+            // This listener handles manual typing of a ward name + blur (tabbing away)
             document.getElementById('wardName').addEventListener('change', e => {
                 const deliveryLocationInput = document.getElementById('deliveryLocation');
-                // Only pre-fill if delivery location is empty or same as old ward name, allows user override
                 if (deliveryLocationInput.value === '' || allWards.includes(deliveryLocationInput.value)) {
                     deliveryLocationInput.value = e.target.value;
                 }
-                // If we are already on page 4, update the summary immediately
                 if (currentPage === 4) {
                     updateSummary();
                     validatePage(4);
                 }
             });
-            
-            // FIX 2: Add a specific listener for Delivery Location to update summary in real-time on page 4
+
+            // This listener handles real-time summary updates for delivery location on Page 4
             document.getElementById('deliveryLocation').addEventListener('input', () => {
                 if (currentPage === 4) {
-                    updateSummary(); // This keeps the visual summary and formData object in sync
+                    updateSummary();
                     validatePage(4);
                 }
             });
 
             document.getElementById('submitBtn').addEventListener('click', submitForm);
         }
-
 
         function handleProductSelection(event) {
             const card = event.currentTarget;
@@ -277,6 +307,7 @@
             if (selectedBloodType === 'cryoprecipitate') main.classList.add('theme-cryo');
             document.querySelectorAll('.product-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
+            validatePage(1);
             document.getElementById('nextPage1').disabled = false;
         }
 
@@ -291,15 +322,34 @@
                 card.classList.add('selected');
                 selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
                 if (currentPage === 4) {
-                    updateSummary(); // Update summary when time is selected
+                    updateSummary();
                     validatePage(4);
                 }
             }));
         }
+        
+        function updateQuantity(amount) {
+            const quantityInput = document.getElementById('quantity');
+            if (!quantityInput) return;
+            let currentValue = parseInt(quantityInput.value) || 0;
+            let newValue = currentValue + amount;
+            if (newValue < 1) newValue = 1;
+            if (newValue > 20) newValue = 20;
+            quantityInput.value = newValue;
+            quantityInput.dispatchEvent(new Event('input'));
+        }
 
         function showTypeSpecificFields() {
             const container = document.getElementById('typeSpecificContent');
-            let content = `<div class="floating-label mt-6"><input type="number" id="quantity" required class="input-medical w-full h-14 px-4 rounded-xl" min="1" max="20" placeholder=" "><label class="label-float left-4 top-4 text-gray-500">จำนวน (Units)<span class="text-red-500">*</span></label></div>`;
+            let content = `
+                <div class="mt-6">
+                    <label class="text-lg font-semibold text-gray-700">จำนวน (Units)<span class="text-red-500">*</span></label>
+                    <div class="flex items-center space-x-3 mt-3">
+                        <button type="button" class="stepper-btn" onclick="updateQuantity(-1)">-</button>
+                        <input type="number" id="quantity" required class="input-medical w-full h-14 px-4 rounded-xl" min="1" max="20" placeholder=" ">
+                        <button type="button" class="stepper-btn" onclick="updateQuantity(1)">+</button>
+                    </div>
+                </div>`;
             const subtypes = {
                 redcell: [{ key: "PRC", value: "Packed Red Cell" }, { key: "LPRC", value: "Leukocyte Poor" }, { key: "LDRC", value: "Leukocyte Depleted" }],
                 ffp: [{ key: "ละลายพร้อมใช้", value: "Ready to Use" }, { key: "ประเภทแช่แข็ง", value: "Frozen Type" }],
@@ -307,7 +357,12 @@
             };
             content += `<div class="mt-6"><label class="text-lg font-semibold text-gray-700">ชนิดย่อย (Subtype)<span class="text-red-500">*</span></label><div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">`;
             subtypes[selectedBloodType].forEach(sub => {
-                content += `<div class="selection-card text-center p-4 cursor-pointer subtype-card" data-subtype="${sub.key}"><h4 class="text-lg font-bold">${sub.key}</h4><p class="text-sm text-gray-500">${sub.value}</p></div>`;
+                content += `
+                    <div class="selection-card text-center p-4 cursor-pointer subtype-card" data-subtype="${sub.key}">
+                        <div class="absolute top-2 right-2 checkmark"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" /></svg></div>
+                        <h4 class="text-lg font-bold">${sub.key}</h4>
+                        <p class="text-sm text-gray-500">${sub.value}</p>
+                    </div>`;
             });
             content += `</div></div>`;
             container.innerHTML = content;
@@ -323,7 +378,6 @@
         }
 
         function updateSummary() {
-            // This function now acts as the single source of truth for the final page's data
             formData = {
                 hn: document.getElementById('hn').value, patientName: document.getElementById('patientName').value,
                 wardName: document.getElementById('wardName').value, bloodType: selectedBloodType,
@@ -332,26 +386,30 @@
                 reporterName: document.getElementById('reporterName').value
             };
             document.getElementById('summaryCard').innerHTML = `
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-3">ใบสรุปคำขอ (Request Summary)</h3>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">ใบสรุปคำขอ (Request Summary)</h3>
                 <div class="summary-grid mt-4">
-                    <span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName || '-'}</span>
-                    <span class="summary-label">HN:</span> <span class="summary-value">${formData.hn || '-'}</span>
-                    <span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName || '-'}</span>
-                    <span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${(formData.bloodType || '-').toUpperCase()}</span>
-                    <span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype || '-'} (${formData.quantity || 0} Units)</span>
-                    <span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime || '-'}</span>
-                    <span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation || '-'}</span>
-                    <span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName || '-'}</span>
+                    <div><span class="summary-label">ผู้ป่วย:</span> <span class="summary-value">${formData.patientName || '-'}</span></div>
+                    <div><span class="summary-label">HN:</span> <span class="summary-value">${formData.hn || '-'}</span></div>
+                    <div><span class="summary-label">หอผู้ป่วย:</span> <span class="summary-value">${formData.wardName || '-'}</span></div>
+                    <div><span class="summary-label">ผลิตภัณฑ์:</span> <span class="summary-value font-bold">${(formData.bloodType || '-').toUpperCase()}</span></div>
+                    <div><span class="summary-label">รายละเอียด:</span> <span class="summary-value">${formData.subtype || '-'} (${formData.quantity || 0} Units)</span></div>
+                    <div><span class="summary-label">รอบส่ง:</span> <span class="summary-value text-blue-600 font-semibold">${formData.deliveryTime || '-'}</span></div>
+                    <div><span class="summary-label">สถานที่:</span> <span class="summary-value">${formData.deliveryLocation || '-'}</span></div>
+                    <div><span class="summary-label">ผู้แจ้ง:</span> <span class="summary-value font-semibold">${formData.reporterName || '-'}</span></div>
                 </div>`;
         }
 
         function validatePage(page) {
             let isValid = false;
-            if (page === 2) {
+            if (page === 1) {
+                isValid = !!selectedBloodType;
+                document.getElementById('nextPage1').disabled = !isValid;
+            } else if (page === 2) {
                 isValid = document.getElementById('hn').value && document.getElementById('patientName').value && document.getElementById('wardName').value && document.getElementById('reporterName').value;
                 document.getElementById('nextPage2').disabled = !isValid;
             } else if (page === 3) {
-                isValid = document.getElementById('quantity')?.value > 0 && selectedSubtype;
+                const quantityInput = document.getElementById('quantity');
+                isValid = quantityInput && quantityInput.value > 0 && selectedSubtype;
                 document.getElementById('nextPage3').disabled = !isValid;
             } else if (page === 4) {
                 isValid = selectedDeliveryTime.id && document.getElementById('deliveryLocation').value;
@@ -360,42 +418,25 @@
         }
         
         async function submitForm() {
-            // FIX 3: The Failsafe. Call updateSummary() one last time before submission.
             updateSummary();
-            
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<div class="loading-spinner"></div> <span>กำลังส่ง...</span>`;
-            
             const finalData = { line_user_id: lineUserId, schedule_id: selectedDeliveryTime.id, ...formData };
-            
-            console.log("Submitting final data:", finalData); // For debugging
-            
             try {
-                // This is a mock response for demonstration as there's no real backend.
-                // In a real scenario, the fetch call would be here.
-                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+                // This is a mock API call for demonstration. Replace with your actual API endpoint.
+                await new Promise(resolve => setTimeout(resolve, 1500));
                 const result = { success: true, request_id: `BR-${Math.floor(Math.random() * 90000) + 10000}` };
                 if (!result.success) throw new Error('Mock server error');
                 showSuccessModal('ส่งข้อมูลสำเร็จแล้ว', `หมายเลขคำขอของคุณคือ: <br><strong class="font-mono text-lg">${result.request_id}</strong>`);
-                
-                /*
-                // REAL FETCH CALL (commented out for demonstration)
-                const response = await fetch('/api/submit_request', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalData)
-                });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message || 'Server error');
-                showSuccessModal('ส่งข้อมูลสำเร็จแล้ว', `หมายเลขคำขอของคุณคือ: <br><strong class="font-mono text-lg">${result.request_id}</strong>`);
-                */
             } catch (error) {
                 console.error('Submission error:', error);
                 showErrorModal('เกิดข้อผิดพลาดในการส่งข้อมูล', error.message);
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `ยืนยันและส่งข้อมูล`;
+                submitBtn.innerHTML = `<span>ยืนยันและส่งข้อมูล</span><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
             }
         }
-
+        
         function showSuccessModal(title, message) {
             document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
@@ -404,19 +445,14 @@
             document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-red-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
         }
-
-        // --- REFINED closeWindow function ---
         function closeWindow() {
-            // Check if the liff object is available and in use
             if (typeof liff !== 'undefined' && liff.isInClient()) {
                 liff.closeWindow();
             } else {
-                // Fallback for regular browsers: just hide the modal
                 document.getElementById('messageModal').classList.add('hidden');
             }
         }
 
-        // --- Autocomplete Logic (No changes needed here) ---
         function setupAutocomplete(input, suggestions) {
             if (!input || !suggestions) return;
             let currentFocus = -1;
@@ -434,6 +470,15 @@
                     itemDiv.innerHTML = item.replace(new RegExp(`(${val})`, 'gi'), '<strong class="text-medical-red-600 bg-medical-red-100 px-1 rounded">$1</strong>');
                     itemDiv.addEventListener("click", function() {
                         input.value = item;
+
+                        // --- FINAL BUG FIX: DIRECTLY UPDATE DELIVERY LOCATION ---
+                        if (input.id === 'wardName') {
+                            const deliveryLocationInput = document.getElementById('deliveryLocation');
+                            if (deliveryLocationInput.value === '' || allWards.includes(deliveryLocationInput.value)) {
+                                deliveryLocationInput.value = item;
+                            }
+                        }
+                        
                         input.dispatchEvent(new Event('change', { bubbles: true }));
                         closeAllLists();
                     });
