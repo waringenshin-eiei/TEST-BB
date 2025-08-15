@@ -267,6 +267,12 @@
             document.getElementById('deliveryLocation').addEventListener('input', () => {
                 isDeliveryLocationUserModified = true;
                 validatePage(4);
+                if (currentPage === 4) updateSummary(); // Update summary when delivery location changes
+            });
+            
+            // Also update summary when delivery location changes via autocomplete selection
+            document.getElementById('deliveryLocation').addEventListener('change', () => {
+                if (currentPage === 4) updateSummary();
             });
             
             // Copy ward button functionality
@@ -276,7 +282,7 @@
                     document.getElementById('deliveryLocation').value = wardValue;
                     isDeliveryLocationUserModified = false; // Reset tracking since this is intentional copy
                     validatePage(4);
-                    updateSummary();
+                    updateSummary(); // Update summary immediately after copying
                 }
             });
             
@@ -337,6 +343,7 @@
         }
 
         function updateSummary() {
+            // Get real-time values from form inputs
             formData = {
                 hn: document.getElementById('hn').value, 
                 patientName: document.getElementById('patientName').value,
@@ -345,7 +352,7 @@
                 quantity: document.getElementById('quantity')?.value, 
                 subtype: selectedSubtype,
                 deliveryTime: selectedDeliveryTime.time, 
-                deliveryLocation: document.getElementById('deliveryLocation').value,
+                deliveryLocation: document.getElementById('deliveryLocation').value, // Get current value from input
                 reporterName: document.getElementById('reporterName').value
             };
             
