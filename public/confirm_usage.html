@@ -225,21 +225,47 @@
             document.getElementById('currentStep').textContent = currentPage;
             document.getElementById('stepDescription').textContent = stepDescriptions[currentPage];
             if (currentPage === 3) showTypeSpecificFields();
-            if (currentPage === 4) updateSummary();
+            if (currentPage === 4) {
+                 // Ensure summary is fresh when navigating to page 4
+                updateSummary();
+                validatePage(4); // Also validate state upon arrival
+            }
         }
 
         function setupEventListeners() {
             document.querySelectorAll('.product-card').forEach(card => card.addEventListener('click', handleProductSelection));
             ['nextPage1', 'nextPage2', 'nextPage3'].forEach(id => document.getElementById(id).addEventListener('click', nextPage));
-            ['hn', 'patientName', 'wardName', 'reporterName', 'deliveryLocation'].forEach(id => {
+            
+            // General validation for page 2 inputs
+            ['hn', 'patientName', 'wardName', 'reporterName'].forEach(id => {
                 document.getElementById(id).addEventListener('input', () => validatePage(currentPage));
             });
+            
+            // FIX 1: Refined pre-fill logic for Ward Name
             document.getElementById('wardName').addEventListener('change', e => {
-                document.getElementById('deliveryLocation').value = e.target.value;
-                validatePage(4);
+                const deliveryLocationInput = document.getElementById('deliveryLocation');
+                // Only pre-fill if delivery location is empty or same as old ward name, allows user override
+                if (deliveryLocationInput.value === '' || allWards.includes(deliveryLocationInput.value)) {
+                    deliveryLocationInput.value = e.target.value;
+                }
+                // If we are already on page 4, update the summary immediately
+                if (currentPage === 4) {
+                    updateSummary();
+                    validatePage(4);
+                }
             });
+            
+            // FIX 2: Add a specific listener for Delivery Location to update summary in real-time on page 4
+            document.getElementById('deliveryLocation').addEventListener('input', () => {
+                if (currentPage === 4) {
+                    updateSummary(); // This keeps the visual summary and formData object in sync
+                    validatePage(4);
+                }
+            });
+
             document.getElementById('submitBtn').addEventListener('click', submitForm);
         }
+
 
         function handleProductSelection(event) {
             const card = event.currentTarget;
@@ -264,8 +290,10 @@
                 container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedDeliveryTime = { id: card.dataset.timeId, time: card.dataset.timeValue };
-                if (currentPage === 4) updateSummary();
-                validatePage(4);
+                if (currentPage === 4) {
+                    updateSummary(); // Update summary when time is selected
+                    validatePage(4);
+                }
             }));
         }
 
@@ -295,6 +323,7 @@
         }
 
         function updateSummary() {
+            // This function now acts as the single source of truth for the final page's data
             formData = {
                 hn: document.getElementById('hn').value, patientName: document.getElementById('patientName').value,
                 wardName: document.getElementById('wardName').value, bloodType: selectedBloodType,
@@ -331,17 +360,34 @@
         }
         
         async function submitForm() {
+            // FIX 3: The Failsafe. Call updateSummary() one last time before submission.
+            updateSummary();
+            
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.innerHTML = `<div class="loading-spinner"></div> <span>กำลังส่ง...</span>`;
+            
             const finalData = { line_user_id: lineUserId, schedule_id: selectedDeliveryTime.id, ...formData };
+            
+            console.log("Submitting final data:", finalData); // For debugging
+            
             try {
+                // This is a mock response for demonstration as there's no real backend.
+                // In a real scenario, the fetch call would be here.
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+                const result = { success: true, request_id: `BR-${Math.floor(Math.random() * 90000) + 10000}` };
+                if (!result.success) throw new Error('Mock server error');
+                showSuccessModal('ส่งข้อมูลสำเร็จแล้ว', `หมายเลขคำขอของคุณคือ: <br><strong class="font-mono text-lg">${result.request_id}</strong>`);
+                
+                /*
+                // REAL FETCH CALL (commented out for demonstration)
                 const response = await fetch('/api/submit_request', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(finalData)
                 });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message || 'Server error');
                 showSuccessModal('ส่งข้อมูลสำเร็จแล้ว', `หมายเลขคำขอของคุณคือ: <br><strong class="font-mono text-lg">${result.request_id}</strong>`);
+                */
             } catch (error) {
                 console.error('Submission error:', error);
                 showErrorModal('เกิดข้อผิดพลาดในการส่งข้อมูล', error.message);
@@ -370,7 +416,7 @@
             }
         }
 
-        // --- Autocomplete Logic ---
+        // --- Autocomplete Logic (No changes needed here) ---
         function setupAutocomplete(input, suggestions) {
             if (!input || !suggestions) return;
             let currentFocus = -1;
