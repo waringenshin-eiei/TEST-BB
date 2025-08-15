@@ -184,7 +184,8 @@
                             <th>Subtype</th>
                             <th class="text-center">Unit(s)</th>
                             <th>Ward</th>
-                            <th>Delivery</th>
+                            <th>Delivery Location</th>
+                            <th>Delivery Time</th>
                             <th class="text-center">Status</th>
                             <th>Requested</th>
                             <th>Updated</th>
@@ -244,47 +245,8 @@
                 }
             }
         }
-
-        async function fetchInitialData() {
-            // ... (rest of the function is unchanged)
-        }
-
-        function connectToSSE() {
-            // ... (unchanged)
-        }
-
-        function handleNewRequest(requestData) {
-            // ... (unchanged)
-        }
         
-        function handleStatusUpdate(updateData) {
-            // ... (unchanged)
-        }
-
-        function createRequestRow(request) {
-            // ... (unchanged)
-        }
-        
-        function createStatusDropdown(requestId, currentStatus) {
-            // ... (unchanged)
-        }
-        
-        async function handleStatusChange(event) {
-            // ... (unchanged)
-        }
-
-        function formatDateTimeWithClass(isoString) {
-            // ... (unchanged)
-        }
-
-        function updateStats() {
-            // ... (unchanged)
-        }
-
-        // --- PASTE PREVIOUS UNCHANGED JAVASCRIPT FUNCTIONS HERE ---
-        // To keep the response concise, the functions that were not modified are omitted.
-        // In a real application, they would remain as they were in the previous step.
-        // The following are the full, correct functions for completeness.
+        // --- The following functions are complete and correct ---
 
         async function fetchInitialData() {
             try {
@@ -307,7 +269,8 @@
             } catch (error) {
                 console.error("Error fetching initial data:", error);
                 const tableBody = document.getElementById('requests-table-body');
-                tableBody.innerHTML = `<tr><td colspan="10" class="text-center" style="padding: 3rem;">⚠️ Failed to load requests. Please check connection.</td></tr>`;
+                // CHANGE: Updated colspan from 10 to 11 to match new column count
+                tableBody.innerHTML = `<tr><td colspan="11" class="text-center" style="padding: 3rem;">⚠️ Failed to load requests. Please check connection.</td></tr>`;
             }
         }
 
@@ -386,6 +349,7 @@
                 subtype = bloodDetails;
             }
 
+            // CHANGE: Separated the single delivery cell into two distinct cells
             row.innerHTML = `
                 <td class="hn-cell">${hn}</td>
                 <td>${patientName}</td>
@@ -395,10 +359,8 @@
                 <td>${subtype}</td>
                 <td class="unit-cell">${units}</td>
                 <td>${wardName}</td>
-                <td>
-                    <div>${deliveryLocation}</div>
-                    <div style="font-size: 0.875rem; color: #6c757d;">${deliveryTime}</div>
-                </td>
+                <td>${deliveryLocation}</td>
+                <td>${deliveryTime}</td>
                 <td class="status-cell text-center">
                     ${createStatusDropdown(request.request_id, request.status)}
                 </td>
