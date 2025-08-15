@@ -187,7 +187,7 @@
     <div id="messageModal" class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
         <div class="main-container rounded-3xl p-8 text-center max-w-md mx-auto">
             <div id="modalContent"></div>
-            <button onclick="closeWindow()" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg w-full mt-6">ปิดหน้าต่าง (Close)</button>
+            <button onclick="closeWindow()" class="btn-secondary font-bold py-3 px-8 rounded-full text-lg w-full mt-6" id="modalCloseBtn">ปิดหน้าต่าง (Close)</button>
         </div>
     </div>
 
@@ -299,8 +299,7 @@
             const container = document.getElementById('deliveryTimeCards');
             container.innerHTML = deliverySchedules.map(({id, time}) => `
                 <div class="selection-card text-center p-4 cursor-pointer time-card" data-time-id="${id}" data-time-value="${time}">
-                    <div class="text-lg font-bold text-gray-700 mb-1">${time}</div>
-                    <div class="text-sm text-gray-500">Available</div>
+                    <div class="text-lg font-bold text-gray-700">${time}</div>
                 </div>`).join('');
             container.querySelectorAll('.time-card').forEach(card => card.addEventListener('click', () => {
                 container.querySelectorAll('.time-card').forEach(c => c.classList.remove('selected'));
@@ -401,19 +400,48 @@
         function showSuccessModal(title, message) {
             document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-green-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
+            // Change button text for success modal
+            document.getElementById('modalCloseBtn').textContent = 'ตกลง (OK)';
         }
         function showErrorModal(title, message) {
             document.getElementById('modalContent').innerHTML = `<h2 class="text-2xl font-bold text-red-600">${title}</h2><p class="text-gray-600 mt-4">${message}</p>`;
             document.getElementById('messageModal').classList.remove('hidden');
+            // Reset button text for error modal
+            document.getElementById('modalCloseBtn').textContent = 'ปิดหน้าต่าง (Close)';
         }
 
-        // --- REFINED closeWindow function ---
+        // --- Enhanced closeWindow function with automatic tab closing ---
         function closeWindow() {
-            // Check if the liff object is available and in use
+            // First priority: Check if LIFF is available (LINE app environment)
             if (typeof liff !== 'undefined' && liff.isInClient()) {
                 liff.closeWindow();
-            } else {
-                // Fallback for regular browsers: just hide the modal
+                return;
+            }
+            
+            // Second priority: Try to close the browser tab/window
+            try {
+                // For modern browsers, try to close the tab
+                window.close();
+                
+                // If window.close() doesn't work (most modern browsers block it), 
+                // try alternative methods
+                if (!window.closed) {
+                    // Try to navigate to a closing page or about:blank
+                    window.location.href = 'about:blank';
+                    
+                    // As a last resort, try to use history.back() if there's previous page
+                    setTimeout(() => {
+                        if (window.history.length > 1) {
+                            window.history.back();
+                        } else {
+                            // Hide the modal as fallback
+                            document.getElementById('messageModal').classList.add('hidden');
+                        }
+                    }, 100);
+                }
+            } catch (e) {
+                // Fallback: just hide the modal if all closing attempts fail
+                console.log('Cannot close tab automatically, hiding modal instead');
                 document.getElementById('messageModal').classList.add('hidden');
             }
         }
